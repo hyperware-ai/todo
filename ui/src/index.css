@@ -1,0 +1,117 @@
+:root {
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5f5;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-900: #0f172a;
+  --iris-50: #eef2ff;
+  --iris-100: #e0e7ff;
+  --iris-200: #c7d2fe;
+  --iris-400: #818cf8;
+  --iris-500: #6366f1;
+  --iris-600: #4f46e5;
+  --iris-700: #4338ca;
+  --amber-500: #fbbf24;
+  --cyan-500: #06b6d4;
+  --mauve-500: #c084fc;
+  --rose-50: #fff1f2;
+  --rose-200: #fecdd3;
+  --green-500: #22c55e;
+  --sand-50: #f5f2ec;
+  --ink-50: #f6f5fb;
+  --ink-200: #e1dfef;
+  --ink-300: #cfcbe3;
+  --ink-500: #6c6a7e;
+  --ink-600: #4c4a63;
+  --ink-700: #2f2d3d;
+  --ink-900: #1b1928;
+  --shell: #ffffff;
+  --shell-soft: #f9f7ff;
+  --shell-bright: #fffeff;
+
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--ink-900);
+  background-color: var(--sand-50);
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--sand-50);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --slate-50: #121323;
+    --slate-100: #181a2e;
+    --slate-200: #1f2139;
+    --slate-300: #2b2d48;
+    --slate-500: #94a3b8;
+    --slate-600: #c7d2fe;
+    --slate-900: #f1f5ff;
+    --iris-50: #1a1c39;
+    --iris-100: #202356;
+    --iris-200: #272b77;
+    --iris-400: #8a9bff;
+    --iris-500: #9eaafc;
+    --iris-600: #b5bcff;
+    --iris-700: #d3d7ff;
+    --amber-500: #fcd34d;
+    --cyan-500: #22d3ee;
+    --mauve-500: #c4b5fd;
+    --rose-50: #3a1224;
+    --rose-200: #7f1d45;
+    --green-500: #4ade80;
+    --ink-50: #0d0d1c;
+    --ink-200: #26243a;
+    --ink-300: #302d46;
+    --ink-500: #b8b5d0;
+    --ink-600: #d9d7ee;
+    --ink-700: #f2f1ff;
+    --ink-900: #ffffff;
+    --shell: #111027;
+    --shell-soft: #171534;
+    --shell-bright: #1d1b3f;
+    --sand-50: #050512;
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--sand-50);
+    color: var(--ink-900);
+  }
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+textarea,
+input {
+  font: inherit;
+}

@@ -1,0 +1,18 @@
+{
+  "name": "Todo",
+  "description": "Plan anything",
+  "image": "",
+  "properties": {
+    "package_name": "todo",
+    "current_version": "0.1.0",
+    "publisher": "ware.hypr",
+    "mirrors": [],
+    "code_hashes": {
+      "0.1.0": ""
+    },
+    "wit_version": 1,
+    "dependencies": []
+  },
+  "external_url": "",
+  "animation_url": ""
+}

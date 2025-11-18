@@ -1,0 +1,16 @@
+[
+    {
+        "process_name": "todo-test",
+        "process_wasm_path": "/todo-test.wasm",
+        "on_exit": "Restart",
+        "request_networking": false,
+        "request_capabilities": [
+            "todo:todo:template.os"
+        ],
+        "grant_capabilities": [
+            "todo:todo:template.os",
+            "tester:tester:sys"
+        ],
+        "public": true
+    }
+]

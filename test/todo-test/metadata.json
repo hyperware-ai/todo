@@ -1,0 +1,21 @@
+{
+    "name": "todo Test",
+    "description": "A test for todo.",
+    "image": "",
+    "properties": {
+        "package_name": "todo-test",
+        "current_version": "0.1.0",
+        "publisher": "template.os",
+        "mirrors": [],
+        "code_hashes": {
+            "0.1.0": ""
+        },
+        "wit_version": 1,
+        "dependencies": [
+            "todo:template.os",
+            "tester:sys"
+        ]
+    },
+    "external_url": "",
+    "animation_url": ""
+}
