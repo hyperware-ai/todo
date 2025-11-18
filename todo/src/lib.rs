@@ -186,6 +186,7 @@ impl TodoState {
         })
     }
 
+    #[local]
     #[http]
     async fn save_entry(&mut self, mut draft: EntryDraft) -> Result<Entry, String> {
         if draft.title.trim().is_empty() {
@@ -249,6 +250,7 @@ impl TodoState {
         Ok(entry)
     }
 
+    #[local]
     #[http]
     async fn toggle_entry_completion(
         &mut self,
@@ -277,6 +279,7 @@ impl TodoState {
         Ok(snapshot)
     }
 
+    #[local]
     #[http]
     async fn delete_entry(&mut self, entry_id: u64) -> Result<bool, String> {
         if let Some(idx) = self.entries.iter().position(|e| e.id == entry_id) {
@@ -292,6 +295,7 @@ impl TodoState {
         }
     }
 
+    #[local]
     #[http]
     async fn save_note(&mut self, draft: NoteDraft) -> Result<Note, String> {
         if draft.title.trim().is_empty() {
@@ -343,6 +347,7 @@ impl TodoState {
         Ok(note)
     }
 
+    #[local]
     #[http]
     async fn delete_note(&mut self, note_id: u64) -> Result<bool, String> {
         if let Some(idx) = self.notes.iter().position(|n| n.id == note_id) {
