@@ -7,6 +7,7 @@ import {
   SpiderMcpServersResult,
   SpiderStatusInfo,
 } from '../types/spider';
+import { SearchAllResult } from '../types/todo';
 
 const BASE_URL = import.meta.env.BASE_URL || window.location.origin;
 
@@ -37,3 +38,6 @@ export const spiderMcpServers = (apiKey: string) =>
 
 export const spiderChat = (payload: SpiderChatPayload) =>
   post<SpiderChatResult>('/api/spider-chat', { SpiderChat: payload });
+
+export const searchAll = (query?: string) =>
+  post<SearchAllResult>('/api/search-all', { SearchAll: query ?? null });

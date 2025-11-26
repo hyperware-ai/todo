@@ -171,7 +171,12 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
     }
   },
 
-  setActiveView: (view) => set({ activeView: view }),
+  setActiveView: (view) => {
+    set({ activeView: view });
+    if (view === 'todo' || view === 'notes') {
+      get().fetchBootstrap();
+    }
+  },
   setEntryEditMode: (mode) => set({ entryEditMode: mode }),
   setNoteEditorTab: (tab) => set({ noteEditorTab: tab }),
 

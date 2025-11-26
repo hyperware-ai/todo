@@ -96,15 +96,17 @@ function App() {
       )}
 
       <main className={`app-main ${activeView === 'chat' ? 'chat-mode' : ''}`}>
-        {activeView === 'chat' ? (
+        <div style={{ display: activeView === 'chat' ? 'contents' : 'none' }}>
           <ChatView resetToken={chatResetToken} />
-        ) : activeView === 'todo' ? (
+        </div>
+        {activeView === 'todo' && (
           <TodoView
             entries={entries}
             onToggle={toggleEntryCompletion}
             onOpenEntry={openEntry}
           />
-        ) : (
+        )}
+        {activeView === 'notes' && (
           <NotesView notes={notes} entries={entries} onOpenNote={openNote} />
         )}
       </main>

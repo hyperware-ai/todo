@@ -70,3 +70,8 @@ export const ACTIVE_VIEWS: { key: ViewName; label: string }[] = [
   { key: 'todo', label: 'TODO' },
   { key: 'notes', label: 'Notes' },
 ];
+
+export interface SearchAllResult {
+  entries: Entry[];
+  notes: Note[];
+}

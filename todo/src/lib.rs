@@ -132,6 +132,12 @@ pub struct AppBootstrap {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearchAllResult {
+    pub entries: Vec<Entry>,
+    pub notes: Vec<Note>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WsServerMessage {
     Snapshot {
         entries: Vec<Entry>,
@@ -366,6 +372,60 @@ impl TodoState {
         } else {
             Err("Note not found".to_string())
         }
+    }
+
+    #[local]
+    #[http]
+    async fn search_all(&self, query: Option<String>) -> Result<SearchAllResult, String> {
+        let query = query.unwrap_or_default();
+        let query_lower = query.to_lowercase();
+        let match_all = query.is_empty() || query == "*";
+
+        let matching_entries: Vec<Entry> = self
+            .entries
+            .iter()
+            .filter(|entry| {
+                if match_all {
+                    return true;
+                }
+                entry.title.to_lowercase().contains(&query_lower)
+                    || entry.summary.to_lowercase().contains(&query_lower)
+                    || entry.description.to_lowercase().contains(&query_lower)
+                    || entry
+                        .project
+                        .as_ref()
+                        .map(|p| p.to_lowercase().contains(&query_lower))
+                        .unwrap_or(false)
+                    || entry
+                        .assignees
+                        .iter()
+                        .any(|a| a.to_lowercase().contains(&query_lower))
+            })
+            .cloned()
+            .collect();
+
+        let matching_notes: Vec<Note> = self
+            .notes
+            .iter()
+            .filter(|note| {
+                if match_all {
+                    return true;
+                }
+                note.title.to_lowercase().contains(&query_lower)
+                    || note.content.to_lowercase().contains(&query_lower)
+                    || note.summary.to_lowercase().contains(&query_lower)
+                    || note
+                        .tags
+                        .iter()
+                        .any(|t| t.to_lowercase().contains(&query_lower))
+            })
+            .cloned()
+            .collect();
+
+        Ok(SearchAllResult {
+            entries: matching_entries,
+            notes: matching_notes,
+        })
     }
 
     #[http]

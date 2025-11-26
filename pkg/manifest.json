@@ -8,14 +8,16 @@
       "homepage:homepage:sys",
       "http-server:distro:sys",
       "vfs:distro:sys",
-      "spider:spider:sys"
+      "spider:spider:sys",
+      "terminal:terminal:sys"
     ],
     "grant_capabilities": [
       "homepage:homepage:sys",
       "http-server:distro:sys",
       "vfs:distro:sys",
+      "spider:spider:sys",
       "tester:tester:sys",
-      "spider:spider:sys"
+      "terminal:terminal:sys"
     ],
     "public": false
   }
