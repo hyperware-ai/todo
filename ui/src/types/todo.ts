@@ -3,7 +3,7 @@ import { Todo as BackendTodo } from '#caller-utils';
 export type Entry = BackendTodo.Entry;
 export type Note = BackendTodo.Note;
 export type EntryTimescale = BackendTodo.EntryTimescale;
-export type ViewName = 'todo' | 'notes';
+export type ViewName = 'chat' | 'todo' | 'notes';
 export type NoteEditorTab = 'content' | 'metadata';
 export type EntryEditMode = 'view' | 'edit';
 
@@ -66,6 +66,7 @@ export interface SectionGroup {
 }
 
 export const ACTIVE_VIEWS: { key: ViewName; label: string }[] = [
+  { key: 'chat', label: 'Chat' },
   { key: 'todo', label: 'TODO' },
   { key: 'notes', label: 'Notes' },
 ];

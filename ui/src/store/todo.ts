@@ -89,7 +89,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   notes: [],
   isLoading: false,
   error: null,
-  activeView: 'todo',
+  activeView: 'chat',
   selectedEntryId: null,
   selectedNoteId: null,
   entryEditMode: 'view',

@@ -21,6 +21,7 @@
   --green-500: #22c55e;
   --sand-50: #f5f2ec;
   --ink-50: #f6f5fb;
+  --ink-100: #eceaf7;
   --ink-200: #e1dfef;
   --ink-300: #cfcbe3;
   --ink-500: #6c6a7e;
@@ -30,6 +31,9 @@
   --shell: #ffffff;
   --shell-soft: #f9f7ff;
   --shell-bright: #fffeff;
+  --bottom-nav-height: 5.5rem;
+  --chat-composer-height: 4.25rem;
+  --chat-horizontal-padding: 0.9rem;
 
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: var(--ink-900);
@@ -76,6 +80,7 @@ body {
     --rose-200: #7f1d45;
     --green-500: #4ade80;
     --ink-50: #0d0d1c;
+    --ink-100: #1f1d31;
     --ink-200: #26243a;
     --ink-300: #302d46;
     --ink-500: #b8b5d0;

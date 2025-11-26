@@ -5,11 +5,14 @@ use hyperprocess_macro::hyperprocess;
 use hyperware_process_lib::{
     homepage::add_to_homepage,
     http::server::{send_ws_push, WsMessageType},
-    our, println, LazyLoadBlob,
+    logging::warn,
+    our, println, Address, LazyLoadBlob, Request as ProcessRequest,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 const ICON: &str = include_str!("./icon");
+const SPIDER_PROCESS_ID: (&str, &str, &str) = ("spider", "spider", "sys");
 
 #[derive(Serialize, Deserialize)]
 pub struct TodoState {
@@ -17,6 +20,7 @@ pub struct TodoState {
     notes: Vec<Note>,
     next_entry_id: u64,
     next_note_id: u64,
+    spider_api_key: Option<String>,
     #[serde(skip)]
     connected_channels: HashSet<u32>,
 }
@@ -28,6 +32,7 @@ impl Default for TodoState {
             notes: Vec::new(),
             next_entry_id: 1,
             next_note_id: 1,
+            spider_api_key: None,
             connected_channels: HashSet::new(),
         }
     }
@@ -363,6 +368,162 @@ impl TodoState {
         }
     }
 
+    #[http]
+    async fn spider_connect(&mut self, force_new: Option<bool>) -> Result<SpiderConnectResult, String> {
+        let should_force = force_new.unwrap_or(false);
+        if !should_force {
+            if let Some(existing) = &self.spider_api_key {
+                return Ok(SpiderConnectResult {
+                    api_key: existing.clone(),
+                });
+            }
+        }
+
+        let body = json!({
+            "CreateSpiderKey": {
+                "name": format!("todo-{}", our().node.clone()),
+                "permissions": vec!["read", "write", "chat"],
+                "adminKey": "",
+            }
+        });
+        let response = ProcessRequest::to(Address::new("our", SPIDER_PROCESS_ID))
+            .body(
+                serde_json::to_vec(&body)
+                    .map_err(|err| format!("failed to serialize spider key request: {err}"))?,
+            )
+            .send_and_await_response(5)
+            .map_err(|err| format!("failed to contact spider: {err:?}"))?
+            .map_err(|err| format!("spider returned an error: {err:?}"))?;
+
+        let parsed: Result<SpiderApiKey, String> = serde_json::from_slice(response.body())
+            .map_err(|err| format!("failed to parse spider key response: {err}"))?;
+
+        match parsed {
+            Ok(key) => {
+                self.spider_api_key = Some(key.key.clone());
+                Ok(SpiderConnectResult { api_key: key.key })
+            }
+            Err(err) => Err(format!("spider refused to create key: {err}")),
+        }
+    }
+
+    #[http]
+    async fn spider_status(&self) -> Result<SpiderStatusInfo, String> {
+        let ping_body = json!({ "Ping": null });
+        let available = ProcessRequest::to(Address::new("our", SPIDER_PROCESS_ID))
+            .body(
+                serde_json::to_vec(&ping_body)
+                    .map_err(|err| format!("failed to serialize ping: {err}"))?,
+            )
+            .send_and_await_response(2)
+            .map(|result| result.is_ok())
+            .unwrap_or(false);
+
+        Ok(SpiderStatusInfo {
+            connected: self.spider_api_key.is_some() && available,
+            has_api_key: self.spider_api_key.is_some(),
+            spider_available: available,
+        })
+    }
+
+    #[http]
+    async fn spider_mcp_servers(&self, api_key: Option<String>) -> Result<SpiderMcpServersResult, String> {
+        let key = api_key
+            .or_else(|| self.spider_api_key.clone())
+            .ok_or_else(|| "Spider API key missing".to_string())?;
+
+        let body = json!({
+            "ListMcpServers": {
+                "authKey": key,
+            }
+        });
+
+        let response = ProcessRequest::to(Address::new("our", SPIDER_PROCESS_ID))
+            .body(
+                serde_json::to_vec(&body)
+                    .map_err(|err| format!("failed to serialize MCP server request: {err}"))?,
+            )
+            .send_and_await_response(5)
+            .map_err(|err| format!("failed to contact spider for MCP servers: {err:?}"))?
+            .map_err(|err| format!("spider returned an error for MCP servers: {err:?}"))?;
+
+        let parsed: Result<Vec<SpiderMcpServerSummary>, String> = serde_json::from_slice(response.body())
+            .map_err(|err| format!("failed to parse MCP server response: {err}"))?;
+
+        parsed
+            .map(|servers| SpiderMcpServersResult { servers })
+            .map_err(|err| format!("spider MCP servers error: {err}"))
+    }
+
+    #[http]
+    async fn spider_chat(&mut self, mut request: SpiderChatPayload) -> Result<SpiderChatResult, String> {
+        if request.api_key.is_empty() {
+            if let Some(stored) = &self.spider_api_key {
+                request.api_key = stored.clone();
+            } else {
+                request.api_key = self
+                    .spider_connect(Some(false))
+                    .await?
+                    .api_key;
+            }
+        }
+
+        let spider_address = Address::new("our", SPIDER_PROCESS_ID);
+        let mut refreshed_key: Option<String> = None;
+
+        for attempt in 0..2 {
+            let payload = json!({ "Chat": encode_spider_chat(&request) });
+            let response = ProcessRequest::to(spider_address.clone())
+                .body(
+                    serde_json::to_vec(&payload)
+                        .map_err(|err| format!("failed to serialize chat request: {err}"))?,
+                )
+                .send_and_await_response(30)
+                .map_err(|err| format!("failed to contact spider for chat: {err:?}"))?
+                .map_err(|err| format!("spider returned chat error: {err:?}"))?;
+
+            let json_body: serde_json::Value = serde_json::from_slice(response.body())
+                .map_err(|err| format!("failed to parse spider chat response: {err}"))?;
+
+            if let Some(err_value) = json_body.get("Err") {
+                let err_msg = err_value
+                    .as_str()
+                    .map(str::to_string)
+                    .unwrap_or_else(|| err_value.to_string());
+                if err_msg.contains("Invalid API key") && attempt == 0 {
+                    match self.spider_connect(Some(true)).await {
+                        Ok(new_key) => {
+                            request.api_key = new_key.api_key.clone();
+                            refreshed_key = Some(new_key.api_key);
+                            continue;
+                        }
+                        Err(connect_err) => {
+                            warn!("Failed to refresh spider API key: {connect_err}");
+                        }
+                    }
+                }
+                return Err(err_msg);
+            }
+
+            if let Some(ok_value) = json_body.get("Ok") {
+                let mut parsed = decode_spider_chat(ok_value.clone())
+                    .map_err(|err| format!("failed to decode spider chat payload: {err}"))?;
+                if let Some(new_key) = refreshed_key.clone() {
+                    self.spider_api_key = Some(new_key.clone());
+                    parsed.refreshed_api_key = Some(new_key);
+                } else if self.spider_api_key.is_none() {
+                    self.spider_api_key = Some(request.api_key.clone());
+                }
+                return Ok(parsed);
+            }
+
+            warn!("Unexpected spider chat response: {json_body:?}");
+            return Err("Spider returned an unexpected response".to_string());
+        }
+
+        Err("Unable to complete Spider chat request".to_string())
+    }
+
     #[ws]
     fn websocket(&mut self, channel_id: u32, message_type: WsMessageType, blob: LazyLoadBlob) {
         match message_type {
@@ -691,4 +852,230 @@ fn random_accent_for(tags: &[String]) -> String {
         return "#fee2e2".to_string();
     }
     "#e0f2fe".to_string()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpiderApiKey {
+    pub key: String,
+    pub name: String,
+    pub permissions: Vec<String>,
+    #[serde(rename = "createdAt")]
+    pub created_at: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpiderConnectResult {
+    pub api_key: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpiderStatusInfo {
+    pub connected: bool,
+    pub has_api_key: bool,
+    #[serde(rename = "spider_available")]
+    pub spider_available: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpiderMcpServersResult {
+    pub servers: Vec<SpiderMcpServerSummary>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpiderChatPayload {
+    #[serde(rename = "apiKey")]
+    pub api_key: String,
+    pub messages: Vec<SpiderMessage>,
+    #[serde(rename = "llmProvider")]
+    pub llm_provider: Option<String>,
+    pub model: Option<String>,
+    #[serde(rename = "mcpServers")]
+    pub mcp_servers: Option<Vec<String>>,
+    pub metadata: Option<SpiderConversationMetadata>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpiderChatResult {
+    #[serde(rename = "conversationId")]
+    pub conversation_id: String,
+    pub response: SpiderMessage,
+    #[serde(rename = "allMessages")]
+    pub all_messages: Option<Vec<SpiderMessage>>,
+    #[serde(rename = "refreshedApiKey", skip_serializing_if = "Option::is_none")]
+    pub refreshed_api_key: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpiderMessage {
+    pub role: String,
+    pub content: SpiderMessageContent,
+    #[serde(rename = "toolCallsJson")]
+    pub tool_calls_json: Option<String>,
+    #[serde(rename = "toolResultsJson")]
+    pub tool_results_json: Option<String>,
+    pub timestamp: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpiderMessageContent {
+    pub text: Option<String>,
+    pub audio: Option<Vec<u8>>,
+    pub base_six_four_audio: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpiderConversationMetadata {
+    #[serde(rename = "startTime")]
+    pub start_time: String,
+    pub client: String,
+    #[serde(rename = "fromStt")]
+    pub from_stt: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpiderMcpServerSummary {
+    pub id: String,
+    pub name: Option<String>,
+    pub connected: bool,
+}
+
+fn encode_spider_chat(request: &SpiderChatPayload) -> serde_json::Value {
+    let messages: Vec<serde_json::Value> = request
+        .messages
+        .iter()
+        .map(|message| {
+            json!({
+                "role": message.role,
+                "content": encode_spider_content(&message.content),
+                "toolCallsJson": message.tool_calls_json,
+                "toolResultsJson": message.tool_results_json,
+                "timestamp": message.timestamp,
+            })
+        })
+        .collect();
+
+    json!({
+        "apiKey": request.api_key,
+        "messages": messages,
+        "llmProvider": request.llm_provider,
+        "model": request.model,
+        "mcpServers": request.mcp_servers,
+        "metadata": request.metadata,
+    })
+}
+
+fn encode_spider_content(content: &SpiderMessageContent) -> serde_json::Value {
+    if let Some(text) = &content.text {
+        return json!({ "Text": text });
+    }
+    if let Some(audio) = &content.audio {
+        return json!({ "Audio": audio });
+    }
+    if let Some(base64) = &content.base_six_four_audio {
+        return json!({ "BaseSixFourAudio": base64 });
+    }
+    serde_json::Value::Null
+}
+
+fn decode_spider_message(content: serde_json::Value) -> SpiderMessageContent {
+    if let Some(text) = content.get("Text").and_then(|v| v.as_str()) {
+        return SpiderMessageContent {
+            text: Some(text.to_string()),
+            audio: None,
+            base_six_four_audio: None,
+        };
+    }
+    if let Some(base64) = content.get("BaseSixFourAudio").and_then(|v| v.as_str()) {
+        return SpiderMessageContent {
+            text: None,
+            audio: None,
+            base_six_four_audio: Some(base64.to_string()),
+        };
+    }
+    if let Some(audio) = content.get("Audio").and_then(|v| v.as_array()) {
+        let bytes: Vec<u8> = audio
+            .iter()
+            .filter_map(|val| val.as_u64().and_then(|n| u8::try_from(n).ok()))
+            .collect();
+        return SpiderMessageContent {
+            text: None,
+            audio: Some(bytes),
+            base_six_four_audio: None,
+        };
+    }
+    if let Some(text) = content.as_str() {
+        return SpiderMessageContent {
+            text: Some(text.to_string()),
+            audio: None,
+            base_six_four_audio: None,
+        };
+    }
+    SpiderMessageContent {
+        text: None,
+        audio: None,
+        base_six_four_audio: None,
+    }
+}
+
+fn decode_spider_chat(value: serde_json::Value) -> Result<SpiderChatResult, String> {
+    let conversation_id = value
+        .get("conversationId")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_string();
+
+    let response = value
+        .get("response")
+        .ok_or_else(|| "missing response".to_string())
+        .and_then(decode_spider_message_obj)?;
+
+    let all_messages = value
+        .get("allMessages")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|val| decode_spider_message_obj(val).ok())
+                .collect::<Vec<_>>()
+        });
+
+    Ok(SpiderChatResult {
+        conversation_id,
+        response,
+        all_messages,
+        refreshed_api_key: None,
+    })
+}
+
+fn decode_spider_message_obj(value: &serde_json::Value) -> Result<SpiderMessage, String> {
+    let role = value
+        .get("role")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "missing role".to_string())?
+        .to_string();
+
+    let content = value
+        .get("content")
+        .ok_or_else(|| "missing content".to_string())
+        .map(|c| decode_spider_message(c.clone()))?;
+
+    let tool_calls_json = value
+        .get("toolCallsJson")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    let tool_results_json = value
+        .get("toolResultsJson")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    let timestamp = value
+        .get("timestamp")
+        .and_then(|v| v.as_u64())
+        .unwrap_or_default();
+
+    Ok(SpiderMessage {
+        role,
+        content,
+        tool_calls_json,
+        tool_results_json,
+        timestamp,
+    })
 }

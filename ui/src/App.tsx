@@ -17,7 +17,9 @@ import {
   TIMESCALES,
   type Entry,
   type Note,
+  type ViewName,
 } from './types/todo';
+import ChatView from './ChatView';
 
 marked.setOptions({
   breaks: true,
@@ -66,6 +68,7 @@ function App() {
     setNoteEditorTab,
     setError,
   } = useTodoStore();
+  const [chatResetToken, setChatResetToken] = useState(0);
 
   useEffect(() => {
     initialize();
@@ -76,8 +79,10 @@ function App() {
   const handleNew = () => {
     if (activeView === 'todo') {
       createEntry();
-    } else {
+    } else if (activeView === 'notes') {
       createNote();
+    } else {
+      setChatResetToken((token) => token + 1);
     }
   };
 
@@ -90,8 +95,10 @@ function App() {
         </div>
       )}
 
-      <main className="app-main">
-        {activeView === 'todo' ? (
+      <main className={`app-main ${activeView === 'chat' ? 'chat-mode' : ''}`}>
+        {activeView === 'chat' ? (
+          <ChatView resetToken={chatResetToken} />
+        ) : activeView === 'todo' ? (
           <TodoView
             entries={entries}
             onToggle={toggleEntryCompletion}
@@ -780,8 +787,8 @@ function NoteEditorDrawer({
 }
 
 interface BottomNavProps {
-  activeView: 'todo' | 'notes';
-  onNavigate: (view: 'todo' | 'notes') => void;
+  activeView: ViewName;
+  onNavigate: (view: ViewName) => void;
   onFabClick: () => void;
 }
 
@@ -789,11 +796,18 @@ function BottomNav({ activeView, onNavigate, onFabClick }: BottomNavProps) {
   const items: Array<{
     key: string;
     label: string;
-    icon: IconName;
+    icon: NavIconName;
     onClick?: () => void;
     active?: boolean;
     disabled?: boolean;
   }> = [
+    {
+      key: 'chat',
+      label: 'Chat',
+      icon: 'chat',
+      onClick: () => onNavigate('chat'),
+      active: activeView === 'chat',
+    },
     {
       key: 'todo',
       label: 'TODO',
@@ -839,8 +853,17 @@ function BottomNav({ activeView, onNavigate, onFabClick }: BottomNavProps) {
 }
 
 type IconName = 'todo' | 'projects' | 'calendar' | 'notes' | 'search' | 'plus';
+type NavIconName = IconName | 'chat';
 
-const NAV_ICONS: Record<IconName, JSX.Element> = {
+const NAV_ICONS: Record<NavIconName, JSX.Element> = {
+  chat: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 6.5h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9l-4 3v-5H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2Z" />
+      <circle cx="9" cy="11.75" r=".75" />
+      <circle cx="12" cy="11.75" r=".75" />
+      <circle cx="15" cy="11.75" r=".75" />
+    </svg>
+  ),
   todo: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
       <rect x="4" y="4.5" width="4.5" height="4.5" rx="1.5" />
