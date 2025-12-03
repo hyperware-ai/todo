@@ -6,6 +6,8 @@ import {
   SpiderConnectResult,
   SpiderMcpServersResult,
   SpiderStatusInfo,
+  RateLimitError,
+  isRateLimitError,
 } from '../types/spider';
 import { SearchAllResult } from '../types/todo';
 
@@ -41,3 +43,15 @@ export const spiderChat = (payload: SpiderChatPayload) =>
 
 export const searchAll = (query?: string) =>
   post<SearchAllResult>('/api/search-all', { SearchAll: query ?? null });
+
+export function parseRateLimitError(errorMessage: string): RateLimitError | null {
+  try {
+    const parsed = JSON.parse(errorMessage);
+    if (isRateLimitError(parsed)) {
+      return parsed;
+    }
+  } catch {
+    // Not a rate limit error
+  }
+  return null;
+}

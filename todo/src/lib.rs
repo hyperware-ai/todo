@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use chrono::{Datelike, Duration, Local, LocalResult, NaiveDate, TimeZone};
-use hyperprocess_macro::hyperprocess;
 use hyperware_process_lib::{
     homepage::add_to_homepage,
     http::server::{send_ws_push, WsMessageType},
@@ -163,7 +162,7 @@ enum WsClientMessage {
     Ping,
 }
 
-#[hyperprocess(
+#[hyperapp_macro::hyperapp(
     name = "Todo App",
     ui = Some(hyperware_process_lib::http::server::HttpBindingConfig::default().authenticated(false)),
     endpoints = vec![

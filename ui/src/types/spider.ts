@@ -94,3 +94,18 @@ export interface PingMessage {
 }
 
 export type WsClientMessage = AuthMessage | ChatMessage | CancelMessage | PingMessage;
+
+export interface RateLimitError {
+  error_type: string;
+  message: string;
+  retry_after_seconds: number;
+}
+
+export function isRateLimitError(obj: unknown): obj is RateLimitError {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'error_type' in obj &&
+    (obj as RateLimitError).error_type === 'OutOfRequests'
+  );
+}

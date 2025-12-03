@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 
-import { connectSpider, spiderChat, spiderMcpServers, spiderStatus } from './spider/api';
+import { connectSpider, parseRateLimitError, spiderChat, spiderMcpServers, spiderStatus } from './spider/api';
+import RateLimitModal from './RateLimitModal';
 import { webSocketService } from './spider/websocket';
 import {
   SpiderChatResult,
@@ -128,6 +129,10 @@ export default function ChatView({ resetToken }: ChatViewProps) {
   const messageElementsRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const lastMessageSourceRef = useRef<'user' | 'assistant' | null>(null);
   const [selectedToolCall, setSelectedToolCall] = useState<{ call: ToolCall; result?: ToolResult } | null>(null);
+  const [rateLimitModal, setRateLimitModal] = useState<{ visible: boolean; retryAfterSeconds: number | null }>({
+    visible: false,
+    retryAfterSeconds: null,
+  });
 
   const parseToolCalls = (raw?: string | null): ToolCall[] => {
     if (!raw) return [];
@@ -478,10 +483,16 @@ export default function ChatView({ resetToken }: ChatViewProps) {
           setIsLoading(false);
           setMetadata((prev) => ({ ...prev, fromStt: false }));
           break;
-        case 'error':
-          setError(message.error || 'Spider error');
+        case 'error': {
+          const rateLimitErr = parseRateLimitError(message.error || '');
+          if (rateLimitErr) {
+            setRateLimitModal({ visible: true, retryAfterSeconds: rateLimitErr.retry_after_seconds });
+          } else {
+            setError(message.error || 'Spider error');
+          }
           setIsLoading(false);
           break;
+        }
         case 'status':
           if (message.status === 'cancelled') {
             setIsLoading(false);
@@ -604,7 +615,13 @@ export default function ChatView({ resetToken }: ChatViewProps) {
       handleChatResponse(response);
     } catch (err) {
       setIsLoading(false);
-      setError(err instanceof Error ? err.message : 'Failed to send message.');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to send message.';
+      const rateLimitErr = parseRateLimitError(errorMessage);
+      if (rateLimitErr) {
+        setRateLimitModal({ visible: true, retryAfterSeconds: rateLimitErr.retry_after_seconds });
+      } else {
+        setError(errorMessage);
+      }
     }
   };
 
@@ -990,6 +1007,12 @@ export default function ChatView({ resetToken }: ChatViewProps) {
             </div>
           </div>
         </div>
+      )}
+      {rateLimitModal.visible && (
+        <RateLimitModal
+          retryAfterSeconds={rateLimitModal.retryAfterSeconds}
+          onClose={() => setRateLimitModal({ visible: false, retryAfterSeconds: null })}
+        />
       )}
     </section>
   );

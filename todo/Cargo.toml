@@ -11,14 +11,14 @@ features = [
 ]
 version = "0.4"
 
-[dependencies.hyperprocess_macro]
-git = "https://github.com/hyperware-ai/hyperprocess-macro"
-rev = "aaf7e02"
+[dependencies.hyperapp_macro]
+git = "https://github.com/hyperware-ai/hyperapp-macro"
+rev = "1495073"
 
 [dependencies.hyperware_process_lib]
 features = ["hyperapp"]
 git = "https://github.com/hyperware-ai/process_lib"
-rev = "e8b065179ce5d15893a23142416e59c87e0f31f6"
+rev = "1a6ad9d"
 
 [dependencies.serde]
 features = ["derive"]
@@ -30,6 +30,7 @@ path = "../target/todo-caller-utils"
 
 [features]
 caller-utils = ["todo_caller_utils"]
+public-mode = []
 
 [lib]
 crate-type = ["cdylib"]

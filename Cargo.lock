@@ -1784,11 +1784,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "hyperprocess_macro"
+name = "hyperapp_macro"
 version = "0.1.0"
-source = "git+https://github.com/hyperware-ai/hyperprocess-macro?rev=aaf7e02#aaf7e025b5047534f89b794ef645eb158bb88d37"
+source = "git+https://github.com/hyperware-ai/hyperapp-macro?rev=1495073#1495073646fb21c3d19ec31605ae35c0da6cb0ed"
 dependencies = [
- "hyperware_process_lib",
+ "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=d3bb304)",
  "proc-macro2",
  "quote",
  "syn 2.0.110",
@@ -1797,7 +1797,7 @@ dependencies = [
 [[package]]
 name = "hyperware_process_lib"
 version = "2.2.0"
-source = "git+https://github.com/hyperware-ai/process_lib?rev=e8b065179ce5d15893a23142416e59c87e0f31f6#e8b065179ce5d15893a23142416e59c87e0f31f6"
+source = "git+https://github.com/hyperware-ai/process_lib?rev=1a6ad9d#1a6ad9d00e98bd6b268a7d434a7e78a0bb3cce7b"
 dependencies = [
  "alloy",
  "alloy-primitives",
@@ -1807,6 +1807,38 @@ dependencies = [
  "base64",
  "bincode",
  "color-eyre",
+ "futures-channel",
+ "futures-util",
+ "http",
+ "mime_guess",
+ "rand 0.8.5",
+ "regex",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tracing",
+ "tracing-error",
+ "tracing-subscriber",
+ "url",
+ "uuid",
+ "wit-bindgen 0.42.1",
+]
+
+[[package]]
+name = "hyperware_process_lib"
+version = "2.2.0"
+source = "git+https://github.com/hyperware-ai/process_lib?rev=d3bb304#d3bb30404fd94cffa473e4fc2503bbeed7dc1c4f"
+dependencies = [
+ "alloy",
+ "alloy-primitives",
+ "alloy-sol-macro",
+ "alloy-sol-types",
+ "anyhow",
+ "base64",
+ "bincode",
+ "color-eyre",
+ "futures-channel",
  "futures-util",
  "http",
  "mime_guess",
@@ -3367,8 +3399,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
- "hyperprocess_macro",
- "hyperware_process_lib",
+ "hyperapp_macro",
+ "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=1a6ad9d)",
  "process_macros",
  "serde",
  "serde_json",
@@ -3383,7 +3415,7 @@ dependencies = [
  "anyhow",
  "futures",
  "futures-util",
- "hyperware_process_lib",
+ "hyperware_process_lib 2.2.0 (git+https://github.com/hyperware-ai/process_lib?rev=1a6ad9d)",
  "once_cell",
  "process_macros",
  "serde",
