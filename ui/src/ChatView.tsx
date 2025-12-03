@@ -93,6 +93,25 @@ const buildPrimingMessages = (): SpiderMessage[] => {
   ];
 };
 
+const SUGGESTED_PROMPTS = [
+  {
+    label: 'What can you do?',
+    value: 'How can you help me manage my todos and notes?',
+  },
+  {
+    label: 'Make a task',
+    value: 'Create a new task assigned to me to have lunch with Mr Anderson tomorrow at noon',
+  },
+  {
+    label: 'Summarize upcoming tasks',
+    value: 'What tasks do I have coming up this week?',
+  },
+  {
+    label: 'Make a note',
+    value: 'Create a new note: grocery list, chicken, carrots, celery, lemon, orzo, onion, garlic, broth, link https://pipingpotcurry.com/lemon-chicken-orzo-pressure-cooker#:~:text=Equipment',
+  },
+];
+
 export default function ChatView({ resetToken }: ChatViewProps) {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const apiKeyRef = useRef<string | null>(null);
@@ -957,6 +976,23 @@ export default function ChatView({ resetToken }: ChatViewProps) {
           </div>
         )}
       </div>
+
+      {visibleMessages.length === 0 && (
+        <div className="suggested-prompts">
+          {SUGGESTED_PROMPTS.map((prompt, index) => (
+            <button
+              key={index}
+              className="suggested-prompt"
+              onClick={() => {
+                void sendMessage({ text: prompt.value });
+              }}
+              disabled={isLoading}
+            >
+              {prompt.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="chat-input-bar">
         <div className="input-row">

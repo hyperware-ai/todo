@@ -593,6 +593,44 @@
   color: var(--ink-600);
 }
 
+.suggested-prompts {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0 var(--chat-horizontal-padding);
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 768px) {
+  .suggested-prompts {
+    grid-template-columns: repeat(4, auto);
+  }
+}
+
+.suggested-prompt {
+  padding: 0.5rem 0.85rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--iris-200);
+  background: var(--iris-50);
+  color: var(--iris-700);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.suggested-prompt:hover:not(:disabled) {
+  background: var(--iris-100);
+  border-color: var(--iris-400);
+}
+
+.suggested-prompt:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .chat-input-bar {
   position: fixed;
   left: var(--chat-horizontal-padding);
