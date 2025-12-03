@@ -263,6 +263,22 @@
   margin: 0.5rem 0 0;
 }
 
+.public-warning {
+  font-size: 1rem;
+  text-align: center;
+  color: var(--ink-500);
+  margin: 0;
+  padding: 0.5rem;
+  background: rgba(255, 150, 50, 0.1);
+  border-radius: 0.5rem;
+}
+
+.public-warning a {
+  color: var(--accent, #0066cc);
+  text-decoration: underline;
+  font-weight: 500;
+}
+
 .notes-section {
   display: flex;
   flex-direction: column;

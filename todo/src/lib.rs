@@ -128,6 +128,7 @@ pub struct NoteDraft {
 pub struct AppBootstrap {
     pub entries: Vec<Entry>,
     pub notes: Vec<Note>,
+    pub is_public_mode: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -193,6 +194,10 @@ impl TodoState {
         Ok(AppBootstrap {
             entries: self.entries.clone(),
             notes: self.notes.clone(),
+            #[cfg(feature = "public-mode")]
+            is_public_mode: true,
+            #[cfg(not(feature = "public-mode"))]
+            is_public_mode: false,
         })
     }
 

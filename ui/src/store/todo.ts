@@ -54,6 +54,7 @@ interface TodoStore {
   notes: Note[];
   isLoading: boolean;
   error: string | null;
+  isPublicMode: boolean;
   activeView: ViewName;
   selectedEntryId: number | null;
   selectedNoteId: number | null;
@@ -89,6 +90,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   notes: [],
   isLoading: false,
   error: null,
+  isPublicMode: false,
   activeView: 'chat',
   selectedEntryId: null,
   selectedNoteId: null,
@@ -122,6 +124,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
       set({
         entries: sortEntries(snapshot.entries),
         notes: sortNotes(snapshot.notes),
+        isPublicMode: snapshot.is_public_mode,
         isLoading: false,
       });
     } catch (error) {

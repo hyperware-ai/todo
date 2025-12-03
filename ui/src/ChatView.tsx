@@ -3,6 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 
 import { connectSpider, parseRateLimitError, spiderChat, spiderMcpServers, spiderStatus } from './spider/api';
 import RateLimitModal from './RateLimitModal';
+import { useTodoStore } from './store/todo';
 import { webSocketService } from './spider/websocket';
 import {
   SpiderChatResult,
@@ -113,6 +114,7 @@ const SUGGESTED_PROMPTS = [
 ];
 
 export default function ChatView({ resetToken }: ChatViewProps) {
+  const isPublicMode = useTodoStore((state) => state.isPublicMode);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const apiKeyRef = useRef<string | null>(null);
   const [messages, setMessages] = useState<SpiderMessage[]>([]);
@@ -725,7 +727,7 @@ export default function ChatView({ resetToken }: ChatViewProps) {
     if (dx > 8 || dy > 8) return;
 
     const target = event.target as HTMLElement;
-    if (target.closest('input, textarea, button')) return;
+    if (target.closest('input, textarea, button, a')) return;
 
     // Toggle recording on tap
     if (recording) {
@@ -837,25 +839,37 @@ export default function ChatView({ resetToken }: ChatViewProps) {
         onPointerLeave={handleLogPointerUp}
       >
         {visibleMessages.length === 0 ? (
-          <div className={`voice-empty ${recording ? 'recording' : ''}`}>
-            <div className="voice-help">
-              {recording ? (
-                <>
-                  <div className="recording-status">
-                    <span className="mic-icon">🎤</span>
-                    <span className="spinner" />
-                  </div>
-                  <h3>Recording..</h3>
-                  <p>Tap to transcribe and send</p>
-                </>
-              ) : (
-                <>
-                  <h3>Tap anywhere to dictate</h3>
-                  <p>Tap again to transcribe and send</p>
-                </>
-              )}
+          <>
+            <div className={`voice-empty ${recording ? 'recording' : ''}`}>
+              <div className="voice-help">
+                {recording ? (
+                  <>
+                    <div className="recording-status">
+                      <span className="mic-icon">🎤</span>
+                      <span className="spinner" />
+                    </div>
+                    <h3>Recording..</h3>
+                    <p>Tap to transcribe and send</p>
+                  </>
+                ) : (
+                  <>
+                    <h3>Tap anywhere to dictate</h3>
+                    <p>Tap again to transcribe and send</p>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+            {isPublicMode && (
+              <p className="public-warning">
+                Public trial: don't input anything sensitive or personally identifying.{' '}
+                <p>
+                  <a href="https://hosted.hyperware.ai" target="_blank" rel="noopener noreferrer">
+                    Sign Up
+                  </a>
+                </p>
+              </p>
+            )}
+          </>
         ) : (
           visibleMessages.map((msg, idx) => {
             const isUser = msg.role === 'user';
