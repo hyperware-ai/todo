@@ -57,7 +57,7 @@ export default function TrialModal({
 
           <div className="trial-cta">
             <a
-              href="https://hosted.hyperware.ai"
+              href="https://hosted.hyperware.ai/?installApp=todo:ware.hypr"
               target="_blank"
               rel="noopener noreferrer"
               className="cta-button"

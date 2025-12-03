@@ -968,7 +968,7 @@ export default function ChatView({ resetToken }: ChatViewProps) {
             {isPublicMode && (
               <div className="public-warning">
                 PUBLIC TRIAL MODE: all inputs are public!
-                <a href="https://hosted.hyperware.ai" target="_blank" rel="noopener noreferrer" className="cta-button">
+                <a href="https://hosted.hyperware.ai/?installApp=todo:ware.hypr" target="_blank" rel="noopener noreferrer" className="cta-button">
                   Sign Up For Full, Private Experience
                 </a>
               </div>
