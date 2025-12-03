@@ -143,3 +143,40 @@
   font-size: 0.9rem;
   line-height: 1.5;
 }
+
+.trial-share {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--ink-200);
+}
+
+.trial-share .share-text {
+  margin: 0 0 0.75rem;
+  color: var(--ink-500);
+  font-size: 0.85rem;
+}
+
+.trial-share .share-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.trial-share .share-button:hover {
+  transform: translateY(-1px);
+}
+
+.trial-share .share-button.twitter {
+  background: #000;
+  color: #fff;
+}
+
+.trial-share .share-button.twitter:hover {
+  background: #333;
+}
