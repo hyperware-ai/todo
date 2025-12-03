@@ -114,7 +114,6 @@ export default function ChatView({ resetToken }: ChatViewProps) {
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
-  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const logRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const messageHandlerRef = useRef<((message: WsServerMessage) => void) | null>(null);
@@ -370,18 +369,6 @@ export default function ChatView({ resetToken }: ChatViewProps) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiKey, useWebSocket]);
-
-  useEffect(() => {
-    if (!recording) {
-      setRecordingSeconds(0);
-      return;
-    }
-    const startedAt = Date.now();
-    const timer = window.setInterval(() => {
-      setRecordingSeconds(Math.max(0, Math.round((Date.now() - startedAt) / 1000)));
-    }, 500);
-    return () => window.clearInterval(timer);
-  }, [recording]);
 
   useEffect(
     () => () => {
@@ -705,23 +692,27 @@ export default function ChatView({ resetToken }: ChatViewProps) {
   };
 
   const handleLogPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (recording) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     pointerStartRef.current = { x: event.clientX, y: event.clientY };
-    const target = event.target as HTMLElement;
-    if (target.closest('input, textarea, button')) return;
-    clearHoldTimer();
-    holdTimerRef.current = window.setTimeout(() => {
-      holdTimerRef.current = null;
-      void startRecording();
-    }, 200);
   };
 
-  const handleLogPointerUp = () => {
-    clearHoldTimer();
+  const handleLogPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!pointerStartRef.current) return;
+    const dx = Math.abs(event.clientX - pointerStartRef.current.x);
+    const dy = Math.abs(event.clientY - pointerStartRef.current.y);
     pointerStartRef.current = null;
+
+    // Only treat as tap if minimal movement
+    if (dx > 8 || dy > 8) return;
+
+    const target = event.target as HTMLElement;
+    if (target.closest('input, textarea, button')) return;
+
+    // Toggle recording on tap
     if (recording) {
       stopRecording();
+    } else {
+      void startRecording();
     }
   };
 
@@ -829,10 +820,21 @@ export default function ChatView({ resetToken }: ChatViewProps) {
         {visibleMessages.length === 0 ? (
           <div className={`voice-empty ${recording ? 'recording' : ''}`}>
             <div className="voice-help">
-              <p className="eyebrow">Hold to record</p>
-              <h3>Press and hold anywhere to dictate</h3>
-              <p>Release to transcribe and send. Great for the first message in a thread.</p>
-              {recording && <span className="recording-indicator">Recording · {recordingSeconds}s</span>}
+              {recording ? (
+                <>
+                  <div className="recording-status">
+                    <span className="mic-icon">🎤</span>
+                    <span className="spinner" />
+                  </div>
+                  <h3>Recording..</h3>
+                  <p>Tap to transcribe and send</p>
+                </>
+              ) : (
+                <>
+                  <h3>Tap anywhere to dictate</h3>
+                  <p>Tap again to transcribe and send</p>
+                </>
+              )}
             </div>
           </div>
         ) : (
