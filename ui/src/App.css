@@ -739,6 +739,37 @@
   box-shadow: 0 0 0 3px var(--rose-100);
 }
 
+.voice-empty.recording .voice-help {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.waveform-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 80px;
+  padding: 1rem 0;
+}
+
+.waveform-bar {
+  width: 4px;
+  min-height: 4px;
+  background: #fb7185;
+  border-radius: 2px;
+  transition: height 0.05s ease-out;
+}
+
+.recording-hint {
+  color: var(--ink-500);
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
 .voice-help h3 {
   margin: 0.25rem 0;
 }

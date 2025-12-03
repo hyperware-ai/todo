@@ -135,6 +135,10 @@ export default function ChatView({ resetToken }: ChatViewProps) {
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const [audioLevels, setAudioLevels] = useState<number[]>(new Array(32).fill(0));
   const logRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const messageHandlerRef = useRef<((message: WsServerMessage) => void) | null>(null);
@@ -672,6 +676,62 @@ export default function ChatView({ resetToken }: ChatViewProps) {
     setRecordingError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Set up audio analysis for visualization
+      const audioContext = new AudioContext();
+      await audioContext.resume(); // Required for mobile browsers
+      console.log('[AUDIO] AudioContext state:', audioContext.state);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.3;
+
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+      console.log('[AUDIO] Stream tracks:', stream.getAudioTracks().map(t => ({ enabled: t.enabled, muted: t.muted, readyState: t.readyState })));
+
+      audioContextRef.current = audioContext;
+      analyserRef.current = analyser;
+      console.log('[AUDIO] Refs set, analyserRef.current:', !!analyserRef.current);
+
+      // Rolling history of amplitude values for waveform display
+      const amplitudeHistory: number[] = new Array(32).fill(0);
+      let frameCount = 0;
+
+      // Start animation loop for visualization
+      const updateLevels = () => {
+        if (!analyserRef.current) {
+          console.log('[AUDIO] analyserRef.current is null, exiting');
+          return;
+        }
+        const dataArray = new Uint8Array(analyserRef.current.fftSize);
+        analyserRef.current.getByteTimeDomainData(dataArray);
+
+        // Calculate RMS amplitude (0-1 range)
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          const normalized = (dataArray[i] - 128) / 128;
+          sum += normalized * normalized;
+        }
+        const rms = Math.sqrt(sum / dataArray.length);
+        // Apply sqrt curve to boost quieter sounds, then scale up
+        const amplitude = Math.min(1, Math.sqrt(rms) * 1.5);
+
+        // Debug every 60 frames (~1 second)
+        frameCount++;
+        if (frameCount % 60 === 0) {
+          console.log('[AUDIO] Frame', frameCount, '- RMS:', rms.toFixed(4), 'Amplitude:', amplitude.toFixed(4), 'Sample data[0-5]:', Array.from(dataArray.slice(0, 5)));
+        }
+
+        // Shift history and add new value
+        amplitudeHistory.shift();
+        amplitudeHistory.push(amplitude);
+
+        setAudioLevels([...amplitudeHistory]);
+        animationFrameRef.current = requestAnimationFrame(updateLevels);
+      };
+      console.log('[AUDIO] Starting animation loop');
+      updateLevels();
+
       const recorder = new MediaRecorder(stream);
       audioChunksRef.current = [];
 
@@ -701,6 +761,22 @@ export default function ChatView({ resetToken }: ChatViewProps) {
   };
 
   const stopRecording = () => {
+    // Cancel animation frame
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+
+    // Close audio context
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+      analyserRef.current = null;
+    }
+
+    // Reset levels
+    setAudioLevels(new Array(32).fill(0));
+
     const recorder = mediaRecorderRef.current;
     if (recorder && recorder.state !== 'inactive') {
       recorder.stop();
@@ -869,12 +945,17 @@ export default function ChatView({ resetToken }: ChatViewProps) {
               <div className="voice-help">
                 {recording ? (
                   <>
-                    <div className="recording-status">
-                      <span className="mic-icon">🎤</span>
-                      <span className="spinner" />
+                    {console.log('[RENDER] audioLevels max:', Math.max(...audioLevels).toFixed(4), 'sum:', audioLevels.reduce((a,b) => a+b, 0).toFixed(4))}
+                    <div className="waveform-container">
+                      {audioLevels.map((level, i) => (
+                        <div
+                          key={i}
+                          className="waveform-bar"
+                          style={{ height: `${Math.max(4, level * 80)}px` }}
+                        />
+                      ))}
                     </div>
-                    <h3>Recording..</h3>
-                    <p>Tap to transcribe and send</p>
+                    <p className="recording-hint">Tap to send</p>
                   </>
                 ) : (
                   <>
