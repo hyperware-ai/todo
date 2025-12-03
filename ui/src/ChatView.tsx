@@ -926,7 +926,7 @@ export default function ChatView({ resetToken }: ChatViewProps) {
           className="trial-counter-badge"
           onClick={() => setTrialModal({ visible: true, isLimitReached: false, retryAfterSeconds: null })}
         >
-          {trialMessageCount}/3
+          {Math.min(trialMessageCount, 3)}/3
         </button>
       )}
 
@@ -966,14 +966,12 @@ export default function ChatView({ resetToken }: ChatViewProps) {
               </div>
             </div>
             {isPublicMode && (
-              <p className="public-warning">
-                Public trial: don't input anything sensitive or personally identifying.{' '}
-                <p>
-                  <a href="https://hosted.hyperware.ai" target="_blank" rel="noopener noreferrer">
-                    Sign Up
-                  </a>
-                </p>
-              </p>
+              <div className="public-warning">
+                PUBLIC TRIAL MODE: all inputs are public!
+                <a href="https://hosted.hyperware.ai" target="_blank" rel="noopener noreferrer" className="cta-button">
+                  Sign Up For Full, Private Experience
+                </a>
+              </div>
             )}
           </>
         ) : (

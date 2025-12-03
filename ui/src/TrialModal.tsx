@@ -46,7 +46,7 @@ export default function TrialModal({
 
         <div className="trial-modal__body">
           <p className="trial-count">
-            {usedCount}/{maxCount} trial requests used
+            {Math.min(usedCount, maxCount)}/{maxCount} trial requests used
           </p>
 
           {isLimitReached && retryAfterSeconds && (
