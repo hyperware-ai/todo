@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { PointerEvent as ReactPointerEvent } from 'react';
 
 import { connectSpider, parseRateLimitError, spiderChat, spiderMcpServers, spiderStatus } from './spider/api';
-import RateLimitModal from './RateLimitModal';
+import TrialModal from './TrialModal';
 import { useTodoStore } from './store/todo';
 import { webSocketService } from './spider/websocket';
 import {
@@ -149,8 +149,17 @@ export default function ChatView({ resetToken }: ChatViewProps) {
   const messageElementsRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const lastMessageSourceRef = useRef<'user' | 'assistant' | null>(null);
   const [selectedToolCall, setSelectedToolCall] = useState<{ call: ToolCall; result?: ToolResult } | null>(null);
-  const [rateLimitModal, setRateLimitModal] = useState<{ visible: boolean; retryAfterSeconds: number | null }>({
+  const [trialMessageCount, setTrialMessageCount] = useState<number>(() => {
+    const stored = localStorage.getItem('trial_message_count');
+    return stored ? parseInt(stored, 10) : 0;
+  });
+  const [trialModal, setTrialModal] = useState<{
+    visible: boolean;
+    isLimitReached: boolean;
+    retryAfterSeconds: number | null;
+  }>({
     visible: false,
+    isLimitReached: false,
     retryAfterSeconds: null,
   });
 
@@ -493,8 +502,8 @@ export default function ChatView({ resetToken }: ChatViewProps) {
           break;
         case 'error': {
           const rateLimitErr = parseRateLimitError(message.error || '');
-          if (rateLimitErr) {
-            setRateLimitModal({ visible: true, retryAfterSeconds: rateLimitErr.retry_after_seconds });
+          if (rateLimitErr && isPublicMode) {
+            setTrialModal({ visible: true, isLimitReached: true, retryAfterSeconds: rateLimitErr.retry_after_seconds });
           } else {
             setError(message.error || 'Spider error');
           }
@@ -593,6 +602,12 @@ export default function ChatView({ resetToken }: ChatViewProps) {
     setIsLoading(true);
     setError(null);
 
+    if (isPublicMode) {
+      const newCount = trialMessageCount + 1;
+      setTrialMessageCount(newCount);
+      localStorage.setItem('trial_message_count', String(newCount));
+    }
+
     const payload = {
       apiKey: keyToUse,
       messages: nextMessages,
@@ -625,8 +640,8 @@ export default function ChatView({ resetToken }: ChatViewProps) {
       setIsLoading(false);
       const errorMessage = err instanceof Error ? err.message : 'Failed to send message.';
       const rateLimitErr = parseRateLimitError(errorMessage);
-      if (rateLimitErr) {
-        setRateLimitModal({ visible: true, retryAfterSeconds: rateLimitErr.retry_after_seconds });
+      if (rateLimitErr && isPublicMode) {
+        setTrialModal({ visible: true, isLimitReached: true, retryAfterSeconds: rateLimitErr.retry_after_seconds });
       } else {
         setError(errorMessage);
       }
@@ -828,6 +843,16 @@ export default function ChatView({ resetToken }: ChatViewProps) {
     <section className="chat-view">
       {error && <div className="alert inline-alert">{error}</div>}
       {recordingError && <div className="alert inline-alert">{recordingError}</div>}
+
+      {isPublicMode && trialMessageCount > 0 && (
+        <button
+          type="button"
+          className="trial-counter-badge"
+          onClick={() => setTrialModal({ visible: true, isLimitReached: false, retryAfterSeconds: null })}
+        >
+          {trialMessageCount}/3
+        </button>
+      )}
 
       <div
         className="chat-log"
@@ -1062,10 +1087,13 @@ export default function ChatView({ resetToken }: ChatViewProps) {
           </div>
         </div>
       )}
-      {rateLimitModal.visible && (
-        <RateLimitModal
-          retryAfterSeconds={rateLimitModal.retryAfterSeconds}
-          onClose={() => setRateLimitModal({ visible: false, retryAfterSeconds: null })}
+      {isPublicMode && trialModal.visible && (
+        <TrialModal
+          usedCount={trialMessageCount}
+          maxCount={3}
+          isLimitReached={trialModal.isLimitReached}
+          retryAfterSeconds={trialModal.retryAfterSeconds}
+          onClose={() => setTrialModal({ visible: false, isLimitReached: false, retryAfterSeconds: null })}
         />
       )}
     </section>

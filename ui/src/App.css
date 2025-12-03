@@ -848,6 +848,25 @@
   font-size: 1.1rem;
 }
 
+.trial-counter-badge {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.375rem 0.75rem;
+  background: var(--shell);
+  border: 1.5px solid var(--ink-200);
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink-600);
+  cursor: pointer;
+  z-index: 30;
+}
+
+.trial-counter-badge:hover {
+  background: var(--shell-soft);
+}
+
 .json-block {
   background: var(--shell-soft);
   border: 1.5px solid var(--ink-200);
