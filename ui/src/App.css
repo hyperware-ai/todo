@@ -264,6 +264,10 @@
 }
 
 .public-warning {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 1rem;
   text-align: center;
   color: var(--ink-500);
@@ -282,7 +286,6 @@
   text-decoration: none;
   font-weight: 600;
   font-size: 0.95rem;
-  margin-top: 0.75rem;
   transition: background 0.15s ease;
 }
 
