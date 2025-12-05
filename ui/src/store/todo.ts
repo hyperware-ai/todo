@@ -77,6 +77,8 @@ interface TodoStore {
   saveNoteContent: (noteId: number, content: string) => Promise<void>;
   saveNoteMetadata: (noteId: number, meta: NoteMetadataPayload) => Promise<void>;
   deleteNote: (noteId: number) => Promise<void>;
+  deleteEntry: (entryId: number) => Promise<void>;
+  archiveEntry: (entryId: number) => Promise<void>;
   setError: (error: string | null) => void;
 }
 
@@ -325,6 +327,57 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
       }));
     } catch (error) {
       set({ error: extractErrorMessage(error) });
+    }
+  },
+
+  deleteEntry: async (entryId) => {
+    try {
+      await Todo.delete_entry(entryId);
+      set((state) => ({
+        entries: state.entries.filter((e) => e.id !== entryId),
+        selectedEntryId: state.selectedEntryId === entryId ? null : state.selectedEntryId,
+      }));
+    } catch (error) {
+      set({ error: extractErrorMessage(error) });
+    }
+  },
+
+  archiveEntry: async (entryId) => {
+    const state = get();
+    const entry = state.entries.find((e) => e.id === entryId);
+    if (!entry) return;
+
+    // Optimistically update the UI immediately
+    set((state) => ({
+      entries: state.entries.map((e) =>
+        e.id === entryId ? { ...e, status: Todo.EntryStatus.Archived } : e
+      ),
+    }));
+
+    try {
+      const draft: Todo.EntryDraft = {
+        id: entry.id,
+        title: entry.title,
+        summary: entry.summary,
+        description: entry.description,
+        project: entry.project,
+        status: Todo.EntryStatus.Archived,
+        priority: entry.priority,
+        due_ts: entry.due_ts,
+        start_ts: entry.start_ts,
+        dependencies: entry.dependencies,
+        note_ids: entry.note_ids,
+        assignees: entry.assignees,
+      };
+      await Todo.save_entry(draft);
+    } catch (error) {
+      // Revert on error
+      set((state) => ({
+        entries: state.entries.map((e) =>
+          e.id === entryId ? { ...e, status: entry.status } : e
+        ),
+        error: extractErrorMessage(error),
+      }));
     }
   },
 

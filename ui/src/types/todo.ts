@@ -55,9 +55,15 @@ export const TIMESCALES: TimescaleDefinition[] = [
 
 export const COMPLETED_SECTION = {
   key: BackendTodo.EntryTimescale.Completed,
-  label: 'Archive',
+  label: 'Recently',
   blurb: 'Recently completed entries',
   accent: 'var(--green-500)',
+};
+
+export const ARCHIVED_SECTION = {
+  label: 'Archive',
+  blurb: 'Archived entries',
+  accent: 'var(--slate-500)',
 };
 
 export interface SectionGroup {

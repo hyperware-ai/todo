@@ -1,7 +1,13 @@
+import { marked } from 'marked';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 
 import { connectSpider, parseRateLimitError, spiderChat, spiderMcpServers, spiderStatus } from './spider/api';
+
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+});
 import TrialModal from './TrialModal';
 import { useTodoStore } from './store/todo';
 import { webSocketService } from './spider/websocket';
@@ -1053,7 +1059,11 @@ export default function ChatView({ resetToken }: ChatViewProps) {
                           </div>
                         </button>
                       )}
-                      {!!textContent && !hideText && <p>{textContent}</p>}
+                      {!!textContent && !hideText && (
+                        isUser
+                          ? <p>{textContent}</p>
+                          : <div className="chat-markdown" dangerouslySetInnerHTML={{ __html: marked.parse(textContent) as string }} />
+                      )}
                       {visibleToolCalls.length > 0 && (
                         <div className="tool-calls">
                           {visibleToolCalls.map((call) => {

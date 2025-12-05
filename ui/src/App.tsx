@@ -32,6 +32,7 @@ const statusCopy: Record<BackendTodo.EntryStatus, string> = {
   [BackendTodo.EntryStatus.Blocked]: 'Blocked',
   [BackendTodo.EntryStatus.Review]: 'Review',
   [BackendTodo.EntryStatus.Done]: 'Done',
+  [BackendTodo.EntryStatus.Archived]: 'Archived',
 };
 
 const priorityCopy: Record<BackendTodo.EntryPriority, string> = {
@@ -56,6 +57,8 @@ function App() {
     closeEntry,
     toggleEntryCompletion,
     saveEntry,
+    deleteEntry,
+    archiveEntry,
     openNote,
     closeNote,
     createEntry,
@@ -68,6 +71,7 @@ function App() {
     setError,
   } = useTodoStore();
   const [chatResetToken, setChatResetToken] = useState(0);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
 
   useEffect(() => {
     initialize();
@@ -75,6 +79,27 @@ function App() {
 
   const activeEntry = entries.find((entry) => entry.id === selectedEntryId) || null;
   const activeNote = notes.find((note) => note.id === selectedNoteId) || null;
+
+  const archivedEntries = useMemo(
+    () => entries.filter((entry) => entry.status === BackendTodo.EntryStatus.Archived),
+    [entries],
+  );
+
+  const completedEntries = useMemo(
+    () => entries.filter(
+      (entry) =>
+        entry.timescale === BackendTodo.EntryTimescale.Completed &&
+        entry.status !== BackendTodo.EntryStatus.Archived
+    ),
+    [entries],
+  );
+
+  const handleArchiveCompleted = async () => {
+    for (const entry of completedEntries) {
+      await archiveEntry(entry.id);
+    }
+  };
+
   const handleNew = () => {
     if (activeView === 'todo') {
       createEntry();
@@ -103,6 +128,9 @@ function App() {
             entries={entries}
             onToggle={toggleEntryCompletion}
             onOpenEntry={openEntry}
+            onArchiveCompleted={handleArchiveCompleted}
+            onViewArchive={() => setShowArchiveModal(true)}
+            archivedCount={archivedEntries.length}
           />
         )}
         {activeView === 'notes' && (
@@ -121,6 +149,10 @@ function App() {
           onEdit={() => setEntryEditMode('edit')}
           onCancelEdit={() => setEntryEditMode('view')}
           onSave={saveEntry}
+          onDelete={async (entryId) => {
+            await deleteEntry(entryId);
+            closeEntry();
+          }}
           onOpenNote={openNote}
         />
       )}
@@ -137,6 +169,18 @@ function App() {
           onDelete={deleteNote}
         />
       )}
+
+      {showArchiveModal && (
+        <ArchiveModal
+          entries={archivedEntries}
+          onClose={() => setShowArchiveModal(false)}
+          onOpenEntry={(entryId) => {
+            setShowArchiveModal(false);
+            openEntry(entryId);
+          }}
+          onDeleteEntry={deleteEntry}
+        />
+      )}
     </div>
   );
 }
@@ -145,20 +189,30 @@ interface TodoViewProps {
   entries: Entry[];
   onToggle: (entryId: number, completed: boolean) => Promise<void>;
   onOpenEntry: (entryId: number) => void;
+  onArchiveCompleted: () => Promise<void>;
+  onViewArchive: () => void;
+  archivedCount: number;
 }
 
-function TodoView({ entries, onToggle, onOpenEntry }: TodoViewProps) {
+function TodoView({ entries, onToggle, onOpenEntry, onArchiveCompleted, onViewArchive, archivedCount }: TodoViewProps) {
   const [archivingId, setArchivingId] = useState<number | null>(null);
+
+  // Filter out archived entries from all views
+  const activeEntries = useMemo(
+    () => entries.filter((entry) => entry.status !== BackendTodo.EntryStatus.Archived),
+    [entries],
+  );
+
   const groups = useMemo(() => {
     return TIMESCALES.map((definition) => ({
       definition,
-      entries: entries.filter((entry) => entry.timescale === definition.key),
+      entries: activeEntries.filter((entry) => entry.timescale === definition.key),
     }));
-  }, [entries]);
+  }, [activeEntries]);
 
   const completedEntries = useMemo(
-    () => entries.filter((entry) => entry.timescale === BackendTodo.EntryTimescale.Completed),
-    [entries],
+    () => activeEntries.filter((entry) => entry.timescale === BackendTodo.EntryTimescale.Completed),
+    [activeEntries],
   );
 
   const handleToggle = async (entryId: number, completed: boolean) => {
@@ -225,6 +279,26 @@ function TodoView({ entries, onToggle, onOpenEntry }: TodoViewProps) {
                   <span>{entry.title}</span>
                 </button>
               ))}
+            </div>
+            <div className="archive-actions">
+              <button className="ghost" onClick={onArchiveCompleted}>
+                Archive All
+              </button>
+              <button className="ghost" onClick={onViewArchive}>
+                View Archive {archivedCount > 0 && <span className="badge">{archivedCount}</span>}
+              </button>
+            </div>
+          </div>
+        </article>
+      )}
+
+      {completedEntries.length === 0 && archivedCount > 0 && (
+        <article className="timescale-section">
+          <div className="timescale-card archive-card">
+            <div className="archive-actions centered">
+              <button className="ghost" onClick={onViewArchive}>
+                View Archive <span className="badge">{archivedCount}</span>
+              </button>
             </div>
           </div>
         </article>
@@ -384,6 +458,7 @@ interface EntryModalProps {
   onEdit: () => void;
   onCancelEdit: () => void;
   onSave: (draft: BackendTodo.EntryDraft) => Promise<void>;
+  onDelete: (entryId: number) => Promise<void>;
   onOpenNote: (noteId: number) => void;
 }
 
@@ -395,6 +470,7 @@ function EntryModal({
   onEdit,
   onCancelEdit,
   onSave,
+  onDelete,
   onOpenNote,
 }: EntryModalProps) {
   const [form, setForm] = useState(entryToDraft(entry));
@@ -437,7 +513,19 @@ function EntryModal({
         </div>
 
         <div className="pill-row meta-bar">
-          <span className="pill">{statusCopy[entry.status]}</span>
+          {mode === 'view' ? (
+            <span className="pill">{statusCopy[entry.status]}</span>
+          ) : (
+            <select
+              value={form.status}
+              onChange={(e) => setForm({ ...form, status: e.target.value as BackendTodo.EntryStatus })}
+              className="status-select"
+            >
+              {Object.entries(statusCopy).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          )}
           {entry.due_ts && <span className="pill">{formatRelative(entry.due_ts)}</span>}
         </div>
 
@@ -485,16 +573,18 @@ function EntryModal({
             {mode === 'view' ? (
               <p style={{ margin: 0 }}>{formatDueDate(entry.due_ts)}</p>
             ) : (
-              <input
-                type="datetime-local"
-                value={toInputDate(form.due_ts)}
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    due_ts: event.target.value ? new Date(event.target.value).getTime() : null,
-                  })
-                }
-              />
+              <div className={`date-input-wrapper ${!form.due_ts ? 'empty' : ''}`}>
+                <input
+                  type="datetime-local"
+                  value={toInputDate(form.due_ts)}
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      due_ts: event.target.value ? new Date(event.target.value).getTime() : null,
+                    })
+                  }
+                />
+              </div>
             )}
           </div>
 
@@ -569,6 +659,9 @@ function EntryModal({
             <button onClick={onEdit}>Edit</button>
           ) : (
             <>
+              <button className="ghost danger" onClick={() => onDelete(entry.id)}>
+                Delete
+              </button>
               <button className="ghost" onClick={onCancelEdit}>
                 Cancel
               </button>
@@ -691,11 +784,6 @@ function NoteEditorDrawer({
     handleClose();
   };
 
-  const handleResetContent = () => {
-    setContentDraft(lastSaved ?? '');
-    setContentMode('write');
-  };
-
   const isDirty = contentDraft !== (lastSaved ?? '');
 
   return (
@@ -751,8 +839,8 @@ function NoteEditorDrawer({
                 <div className="note-preview" dangerouslySetInnerHTML={htmlPreview} />
               )}
               <div className="note-editor-footer">
-                <button className="ghost" onClick={handleResetContent}>
-                  Reset
+                <button className="ghost danger" onClick={() => onDelete(note.id)}>
+                  Delete
                 </button>
                 <span className="save-indicator">{isDirty ? 'Saving…' : 'Saved'}</span>
               </div>
@@ -801,6 +889,62 @@ function NoteEditorDrawer({
                 <button onClick={handleSaveMetadata}>Save metadata</button>
               </div>
             </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface ArchiveModalProps {
+  entries: Entry[];
+  onClose: () => void;
+  onOpenEntry: (entryId: number) => void;
+  onDeleteEntry: (entryId: number) => Promise<void>;
+}
+
+function ArchiveModal({ entries, onClose, onOpenEntry, onDeleteEntry }: ArchiveModalProps) {
+  const handleOverlayClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return;
+    event.stopPropagation();
+    onClose();
+  };
+
+  return (
+    <div className="sheet-overlay archive-overlay" onMouseDown={handleOverlayClick}>
+      <div className="archive-panel" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="panel-header">
+          <button className="icon-button" onClick={onClose} aria-label="Close archive">
+            ←
+          </button>
+          <div className="panel-title">
+            <p className="eyebrow">Archive</p>
+            <h2>Archived Tasks</h2>
+          </div>
+        </div>
+
+        <div className="panel-content archive-list">
+          {entries.length === 0 ? (
+            <p className="empty-message">No archived tasks yet.</p>
+          ) : (
+            entries.map((entry) => (
+              <div key={entry.id} className="archive-item">
+                <button className="archive-item-body" onClick={() => onOpenEntry(entry.id)}>
+                  <span className="check-icon">✓</span>
+                  <div className="archive-item-info">
+                    <h4>{entry.title}</h4>
+                    {entry.summary && <p>{entry.summary}</p>}
+                  </div>
+                </button>
+                <button
+                  className="ghost danger archive-item-delete"
+                  onClick={() => onDeleteEntry(entry.id)}
+                  aria-label="Delete"
+                >
+                  ×
+                </button>
+              </div>
+            ))
           )}
         </div>
       </div>

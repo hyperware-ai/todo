@@ -45,6 +45,7 @@ pub enum EntryStatus {
     Blocked,
     Review,
     Done,
+    Archived,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -389,6 +390,10 @@ impl TodoState {
             .entries
             .iter()
             .filter(|entry| {
+                // Exclude archived entries from search results
+                if entry.status == EntryStatus::Archived {
+                    return false;
+                }
                 if match_all {
                     return true;
                 }
