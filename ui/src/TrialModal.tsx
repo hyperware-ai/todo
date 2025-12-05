@@ -70,7 +70,7 @@ export default function TrialModal({
           <div className="trial-share">
             <p className="share-text">or spread the word</p>
             <a
-              href="https://x.com/intent/post?text=Check+out+Spider%2C+the+new+personal+assistant&via=Hyperware_ai&url=https://spider.hyperware.ai/todo:todo:ware.hypr"
+              href="https://x.com/intent/post?text=Meet+Spider%2C+your+new+personal+assistant%2E%0ASmarter+tasks%2E+Cleaner+days%2E+Zero+chaos%2E%0A%0ACheck+it+out%3A%0Ahttps%3A%2F%2Fspider%2Ehyperware%2Eai%2Ftodo%3Atodo%3Aware%2Ehypr%0A%0AIncubated+by+%40Hyperware%5Fai"
               target="_blank"
               rel="noopener noreferrer"
               className="share-button twitter"
