@@ -57,12 +57,12 @@ export default function TrialModal({
 
           <div className="trial-cta">
             <a
-              href="https://hosted.hyperware.ai/?installApp=todo:ware.hypr"
+              href="https://hosted.hyperware.ai/?installApp=spider"
               target="_blank"
               rel="noopener noreferrer"
               className="cta-button"
             >
-              Sign Up
+              Sign Up or Log In
             </a>
             <p className="cta-text">to get started with Spider, your own personal agent</p>
           </div>
