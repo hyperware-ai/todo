@@ -4,7 +4,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
@@ -443,66 +442,64 @@ function EntryModal({
         </div>
 
         <div className="panel-content">
-          <section>
-            <h3>Summary</h3>
+          <div className="meta-field">
+            <span className="eyebrow">Summary</span>
             {mode === 'view' ? (
-              <p>{entry.summary}</p>
+              <p style={{ margin: 0 }}>{entry.summary}</p>
             ) : (
               <textarea
                 value={form.summary}
                 onChange={(event) => setForm({ ...form, summary: event.target.value })}
               />
             )}
-          </section>
+          </div>
 
-          <section>
-            <h3>Planning notes</h3>
+          <div className="meta-field">
+            <span className="eyebrow">Planning notes</span>
             {mode === 'view' ? (
-              <p>{entry.description || 'No description yet.'}</p>
+              <p style={{ margin: 0 }}>{entry.description || 'No description yet.'}</p>
             ) : (
               <textarea
                 value={form.description}
                 onChange={(event) => setForm({ ...form, description: event.target.value })}
               />
             )}
-          </section>
+          </div>
 
-          <section className="meta-grid">
-            <article>
-              <p className="eyebrow">Project</p>
-              {mode === 'view' ? (
-                <p>{entry.project ?? 'Unassigned'}</p>
-              ) : (
-                <input
-                  value={form.project ?? ''}
-                  onChange={(event) =>
-                    setForm({ ...form, project: event.target.value || null })
-                  }
-                />
-              )}
-            </article>
+          <div className="meta-field">
+            <span className="eyebrow">Project</span>
+            {mode === 'view' ? (
+              <p style={{ margin: 0 }}>{entry.project ?? 'Unassigned'}</p>
+            ) : (
+              <input
+                value={form.project ?? ''}
+                onChange={(event) =>
+                  setForm({ ...form, project: event.target.value || null })
+                }
+              />
+            )}
+          </div>
 
-            <article>
-              <p className="eyebrow">Due</p>
-              {mode === 'view' ? (
-                <p>{formatDueDate(entry.due_ts)}</p>
-              ) : (
-                <input
-                  type="datetime-local"
-                  value={toInputDate(form.due_ts)}
-                  onChange={(event) =>
-                    setForm({
-                      ...form,
-                      due_ts: event.target.value ? new Date(event.target.value).getTime() : null,
-                    })
-                  }
-                />
-              )}
-            </article>
-          </section>
+          <div className="meta-field">
+            <span className="eyebrow">Due</span>
+            {mode === 'view' ? (
+              <p style={{ margin: 0 }}>{formatDueDate(entry.due_ts)}</p>
+            ) : (
+              <input
+                type="datetime-local"
+                value={toInputDate(form.due_ts)}
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    due_ts: event.target.value ? new Date(event.target.value).getTime() : null,
+                  })
+                }
+              />
+            )}
+          </div>
 
-          <section>
-            <p className="eyebrow">Assignees</p>
+          <div className="meta-field">
+            <span className="eyebrow">Assignees</span>
             {mode === 'view' ? (
               <div className="pill-row">
                 {entry.assignees.map((assignee) => (
@@ -510,7 +507,7 @@ function EntryModal({
                     {assignee}
                   </span>
                 ))}
-                {entry.assignees.length === 0 && <p>No assignees yet.</p>}
+                {entry.assignees.length === 0 && <p style={{ margin: 0 }}>No assignees yet.</p>}
               </div>
             ) : (
               <input
@@ -526,22 +523,45 @@ function EntryModal({
                 }
               />
             )}
-          </section>
+          </div>
 
-          <section>
-            <p className="eyebrow">Notes</p>
-            {relatedNotes.length === 0 && <p>No linked notes yet.</p>}
-            {relatedNotes.length > 0 && (
-              <div className="linked-notes">
-                {relatedNotes.map((note) => (
-                  <button key={note.id} onClick={() => onOpenNote(note.id)}>
-                    <h4>{note.title}</h4>
-                    <p>{note.summary}</p>
-                  </button>
+          <div className="meta-field">
+            <span className="eyebrow">Notes</span>
+            {mode === 'view' ? (
+              relatedNotes.length === 0 ? (
+                <p style={{ margin: 0 }}>No linked notes yet.</p>
+              ) : (
+                <div className="linked-notes">
+                  {relatedNotes.map((note) => (
+                    <button key={note.id} onClick={() => onOpenNote(note.id)}>
+                      <h4>{note.title}</h4>
+                      <p>{note.summary}</p>
+                    </button>
+                  ))}
+                </div>
+              )
+            ) : (
+              <div className="link-list">
+                {notes.map((note) => (
+                  <label key={note.id}>
+                    <input
+                      type="checkbox"
+                      checked={form.note_ids.includes(note.id)}
+                      onChange={() =>
+                        setForm({
+                          ...form,
+                          note_ids: form.note_ids.includes(note.id)
+                            ? form.note_ids.filter((id) => id !== note.id)
+                            : [...form.note_ids, note.id],
+                        })
+                      }
+                    />
+                    <span>{note.title}</span>
+                  </label>
                 ))}
               </div>
             )}
-          </section>
+          </div>
         </div>
 
         <div className="sheet-actions">
@@ -600,7 +620,7 @@ function NoteEditorDrawer({
   const [linkedIds, setLinkedIds] = useState<number[]>(safeLinked);
   const [pinned, setPinned] = useState(note.pinned);
   const [contentMode, setContentMode] = useState<'write' | 'preview'>('write');
-  const lastSavedRef = useRef(note.content);
+  const [lastSaved, setLastSaved] = useState(note.content);
   const liveTitle = title.trim() ? title : 'Untitled note';
 
   useEffect(() => {
@@ -610,8 +630,8 @@ function NoteEditorDrawer({
     setLinkedIds(note.linked_entry_ids ?? []);
     setPinned(note.pinned);
     setContentMode('write');
-    lastSavedRef.current = note.content;
-  }, [note]);
+    setLastSaved(note.content);
+  }, [note.id]);
 
   const htmlPreview = useMemo(
     () => ({ __html: marked.parse(contentDraft || '') }),
@@ -619,10 +639,10 @@ function NoteEditorDrawer({
   );
 
   const flushContent = useCallback(async () => {
-    if (contentDraft === lastSavedRef.current) return;
+    if (contentDraft === lastSaved) return;
     await onSaveContent(note.id, contentDraft);
-    lastSavedRef.current = contentDraft;
-  }, [contentDraft, note.id, onSaveContent]);
+    setLastSaved(contentDraft);
+  }, [contentDraft, lastSaved, note.id, onSaveContent]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -672,11 +692,11 @@ function NoteEditorDrawer({
   };
 
   const handleResetContent = () => {
-    setContentDraft(lastSavedRef.current ?? '');
+    setContentDraft(lastSaved ?? '');
     setContentMode('write');
   };
 
-  const isDirty = contentDraft !== (lastSavedRef.current ?? '');
+  const isDirty = contentDraft !== (lastSaved ?? '');
 
   return (
     <div className="sheet-overlay note-overlay" onMouseDown={handleOverlayClick}>
