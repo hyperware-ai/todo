@@ -464,11 +464,18 @@
 
 .nav-item.new {
   grid-column: span 1;
-  background: var(--iris-600);
-  color: #fff;
+  background: var(--iris-100);
+  color: var(--iris-700);
+  box-shadow: inset 0 0 0 1.5px var(--iris-300);
   flex-direction: column;
   gap: 0.15rem;
   font-size: 0.78rem;
+}
+
+.nav-item.new.subtle {
+  background: transparent;
+  color: var(--ink-500);
+  box-shadow: none;
 }
 
 .nav-icon svg {

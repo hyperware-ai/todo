@@ -1008,7 +1008,7 @@ function BottomNav({ activeView, onNavigate, onFabClick }: BottomNavProps) {
           <span className="nav-label">{item.label}</span>
         </button>
       ))}
-      <button className="nav-item new" onClick={onFabClick}>
+      <button className={`nav-item new ${activeView === 'chat' ? 'subtle' : ''}`} onClick={onFabClick}>
         <span className="nav-icon" aria-hidden="true">
           {NAV_ICONS.plus}
         </span>
