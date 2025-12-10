@@ -936,15 +936,17 @@ export default function ChatView({ resetToken }: ChatViewProps) {
         </button>
       )}
 
-      <div
-        className="chat-log"
-        ref={logRef}
-        onPointerDown={handleLogPointerDown}
-        onPointerUp={handleLogPointerUp}
-        onPointerMove={handleLogPointerMove}
-        onPointerCancel={handleLogPointerUp}
-        onPointerLeave={handleLogPointerUp}
-      >
+      {/* Frosted Glass Chat Container */}
+      <div className="chat-container">
+        <div
+          className="chat-log"
+          ref={logRef}
+          onPointerDown={handleLogPointerDown}
+          onPointerUp={handleLogPointerUp}
+          onPointerMove={handleLogPointerMove}
+          onPointerCancel={handleLogPointerUp}
+          onPointerLeave={handleLogPointerUp}
+        >
         {visibleMessages.length === 0 ? (
           <>
             <div className={`voice-empty ${recording ? 'recording' : ''}`}>
@@ -1103,24 +1105,25 @@ export default function ChatView({ resetToken }: ChatViewProps) {
             </div>
           </div>
         )}
-      </div>
 
-      {visibleMessages.length === 0 && (
-        <div className="suggested-prompts">
-          {SUGGESTED_PROMPTS.map((prompt, index) => (
-            <button
-              key={index}
-              className="suggested-prompt"
-              onClick={() => {
-                void sendMessage({ text: prompt.value });
-              }}
-              disabled={isLoading}
-            >
-              {prompt.label}
-            </button>
-          ))}
+        {visibleMessages.length === 0 && (
+          <div className="suggested-prompts">
+            {SUGGESTED_PROMPTS.map((prompt, index) => (
+              <button
+                key={index}
+                className="suggested-prompt"
+                onClick={() => {
+                  void sendMessage({ text: prompt.value });
+                }}
+                disabled={isLoading}
+              >
+                {prompt.label}
+              </button>
+            ))}
+          </div>
+        )}
         </div>
-      )}
+      </div> {/* End chat-container */}
 
       <div className="chat-input-bar">
         <div className="input-row">
@@ -1134,7 +1137,7 @@ export default function ChatView({ resetToken }: ChatViewProps) {
                 void handleSend();
               }
             }}
-            placeholder={recording ? 'Recording…' : 'Type a message'}
+            placeholder={recording ? 'Recording…' : 'Type your message...'}
             disabled={isLoading}
           />
           {isLoading ? (
@@ -1144,7 +1147,7 @@ export default function ChatView({ resetToken }: ChatViewProps) {
           ) : (
             <button className="send-button" onClick={() => void handleSend()} disabled={!messageDraft.trim()} aria-label="Send">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 19V5M5 12l7-7 7 7" />
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
               </svg>
             </button>
           )}
