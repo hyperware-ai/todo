@@ -4,7 +4,8 @@ use chrono::{Datelike, Duration, Local, LocalResult, NaiveDate, TimeZone};
 use hyperware_process_lib::{
     homepage::add_to_homepage,
     http::server::{send_ws_push, WsMessageType},
-    logging::warn,
+    hyperapp,
+    logging::info,
     our, println, Address, LazyLoadBlob, Request as ProcessRequest,
 };
 use serde::{Deserialize, Serialize};
@@ -441,31 +442,40 @@ impl TodoState {
     async fn spider_connect(&mut self, force_new: Option<bool>) -> Result<SpiderConnectResult, String> {
         let should_force = force_new.unwrap_or(false);
         if !should_force {
-            if let Some(existing) = &self.spider_api_key {
-                return Ok(SpiderConnectResult {
-                    api_key: existing.clone(),
-                });
+            if let Some(existing) = self.spider_api_key.clone() {
+                // Validate the cached key before returning it
+                if self.validate_spider_key(&existing).await {
+                    return Ok(SpiderConnectResult {
+                        api_key: existing,
+                    });
+                }
+                info!("cached spider API key is invalid, creating new one");
             }
         }
 
+        // Always use a unique name to ensure Spider creates a fresh key
+        let key_name = format!("todo-{}-{}", our().node.clone(), std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis());
+
         let body = json!({
             "CreateSpiderKey": {
-                "name": format!("todo-{}", our().node.clone()),
+                "name": key_name,
                 "permissions": vec!["read", "write", "chat"],
                 "adminKey": "",
             }
         });
-        let response = ProcessRequest::to(Address::new("our", SPIDER_PROCESS_ID))
+        let request = ProcessRequest::to(Address::new("our", SPIDER_PROCESS_ID))
             .body(
                 serde_json::to_vec(&body)
                     .map_err(|err| format!("failed to serialize spider key request: {err}"))?,
             )
-            .send_and_await_response(5)
-            .map_err(|err| format!("failed to contact spider: {err:?}"))?
-            .map_err(|err| format!("spider returned an error: {err:?}"))?;
+            .expects_response(5);
 
-        let parsed: Result<SpiderApiKey, String> = serde_json::from_slice(response.body())
-            .map_err(|err| format!("failed to parse spider key response: {err}"))?;
+        let parsed: Result<SpiderApiKey, String> = hyperapp::send(request)
+            .await
+            .map_err(|err| format!("failed to contact spider: {err}"))?;
 
         match parsed {
             Ok(key) => {
@@ -479,14 +489,13 @@ impl TodoState {
     #[http]
     async fn spider_status(&self) -> Result<SpiderStatusInfo, String> {
         let ping_body = json!({ "Ping": null });
-        let available = ProcessRequest::to(Address::new("our", SPIDER_PROCESS_ID))
+        let request = ProcessRequest::to(Address::new("our", SPIDER_PROCESS_ID))
             .body(
                 serde_json::to_vec(&ping_body)
                     .map_err(|err| format!("failed to serialize ping: {err}"))?,
             )
-            .send_and_await_response(2)
-            .map(|result| result.is_ok())
-            .unwrap_or(false);
+            .expects_response(2);
+        let available = hyperapp::send::<serde_json::Value>(request).await.is_ok();
 
         Ok(SpiderStatusInfo {
             connected: self.spider_api_key.is_some() && available,
@@ -496,7 +505,10 @@ impl TodoState {
     }
 
     #[http]
-    async fn spider_mcp_servers(&self, api_key: Option<String>) -> Result<SpiderMcpServersResult, String> {
+    async fn spider_mcp_servers(
+        &self,
+        api_key: Option<String>,
+    ) -> Result<SpiderMcpServersResult, String> {
         let key = api_key
             .or_else(|| self.spider_api_key.clone())
             .ok_or_else(|| "Spider API key missing".to_string())?;
@@ -507,17 +519,16 @@ impl TodoState {
             }
         });
 
-        let response = ProcessRequest::to(Address::new("our", SPIDER_PROCESS_ID))
+        let request = ProcessRequest::to(Address::new("our", SPIDER_PROCESS_ID))
             .body(
                 serde_json::to_vec(&body)
                     .map_err(|err| format!("failed to serialize MCP server request: {err}"))?,
             )
-            .send_and_await_response(5)
-            .map_err(|err| format!("failed to contact spider for MCP servers: {err:?}"))?
-            .map_err(|err| format!("spider returned an error for MCP servers: {err:?}"))?;
+            .expects_response(5);
 
-        let parsed: Result<Vec<SpiderMcpServerSummary>, String> = serde_json::from_slice(response.body())
-            .map_err(|err| format!("failed to parse MCP server response: {err}"))?;
+        let parsed: Result<Vec<SpiderMcpServerSummary>, String> = hyperapp::send(request)
+            .await
+            .map_err(|err| format!("failed to contact spider for MCP servers: {err}"))?;
 
         parsed
             .map(|servers| SpiderMcpServersResult { servers })
@@ -525,72 +536,49 @@ impl TodoState {
     }
 
     #[http]
-    async fn spider_chat(&mut self, mut request: SpiderChatPayload) -> Result<SpiderChatResult, String> {
+    async fn spider_chat(
+        &mut self,
+        mut request: SpiderChatPayload,
+    ) -> Result<SpiderChatResult, String> {
         if request.api_key.is_empty() {
             if let Some(stored) = &self.spider_api_key {
                 request.api_key = stored.clone();
             } else {
-                request.api_key = self
-                    .spider_connect(Some(false))
-                    .await?
-                    .api_key;
+                request.api_key = self.spider_connect(Some(false)).await?.api_key;
             }
         }
 
-        let spider_address = Address::new("our", SPIDER_PROCESS_ID);
-        let mut refreshed_key: Option<String> = None;
+        let payload = json!({ "Chat": encode_spider_chat(&request) });
+        let http_request = ProcessRequest::to(Address::new("our", SPIDER_PROCESS_ID))
+            .body(
+                serde_json::to_vec(&payload)
+                    .map_err(|err| format!("failed to serialize chat request: {err}"))?,
+            )
+            .expects_response(30);
 
-        for attempt in 0..2 {
-            let payload = json!({ "Chat": encode_spider_chat(&request) });
-            let response = ProcessRequest::to(spider_address.clone())
-                .body(
-                    serde_json::to_vec(&payload)
-                        .map_err(|err| format!("failed to serialize chat request: {err}"))?,
-                )
-                .send_and_await_response(30)
-                .map_err(|err| format!("failed to contact spider for chat: {err:?}"))?
-                .map_err(|err| format!("spider returned chat error: {err:?}"))?;
+        let json_body: serde_json::Value = hyperapp::send(http_request)
+            .await
+            .map_err(|err| format!("failed to contact spider for chat: {err}"))?;
 
-            let json_body: serde_json::Value = serde_json::from_slice(response.body())
-                .map_err(|err| format!("failed to parse spider chat response: {err}"))?;
-
-            if let Some(err_value) = json_body.get("Err") {
-                let err_msg = err_value
-                    .as_str()
-                    .map(str::to_string)
-                    .unwrap_or_else(|| err_value.to_string());
-                if err_msg.contains("Invalid API key") && attempt == 0 {
-                    match self.spider_connect(Some(true)).await {
-                        Ok(new_key) => {
-                            request.api_key = new_key.api_key.clone();
-                            refreshed_key = Some(new_key.api_key);
-                            continue;
-                        }
-                        Err(connect_err) => {
-                            warn!("Failed to refresh spider API key: {connect_err}");
-                        }
-                    }
-                }
-                return Err(err_msg);
-            }
-
-            if let Some(ok_value) = json_body.get("Ok") {
-                let mut parsed = decode_spider_chat(ok_value.clone())
-                    .map_err(|err| format!("failed to decode spider chat payload: {err}"))?;
-                if let Some(new_key) = refreshed_key.clone() {
-                    self.spider_api_key = Some(new_key.clone());
-                    parsed.refreshed_api_key = Some(new_key);
-                } else if self.spider_api_key.is_none() {
-                    self.spider_api_key = Some(request.api_key.clone());
-                }
-                return Ok(parsed);
-            }
-
-            warn!("Unexpected spider chat response: {json_body:?}");
-            return Err("Spider returned an unexpected response".to_string());
+        if let Some(err_value) = json_body.get("Err") {
+            let err_msg = err_value
+                .as_str()
+                .map(str::to_string)
+                .unwrap_or_else(|| err_value.to_string());
+            return Err(err_msg);
         }
 
-        Err("Unable to complete Spider chat request".to_string())
+        if let Some(ok_value) = json_body.get("Ok") {
+            let parsed = decode_spider_chat(ok_value.clone())
+                .map_err(|err| format!("failed to decode spider chat payload: {err}"))?;
+
+            if self.spider_api_key.is_none() {
+                self.spider_api_key = Some(request.api_key.clone());
+            }
+            return Ok(parsed);
+        }
+
+        Err("Spider returned an unexpected response".to_string())
     }
 
     #[ws]
@@ -623,6 +611,39 @@ impl TodoState {
     fn ensure_demo_content(&mut self) {
         // No demo content - users start with an empty slate
     }
+
+    /// Validates a Spider API key by making a lightweight test request
+    async fn validate_spider_key(&self, api_key: &str) -> bool {
+        let body = json!({
+            "ListMcpServers": {
+                "authKey": api_key,
+            }
+        });
+
+        let request = ProcessRequest::to(Address::new("our", SPIDER_PROCESS_ID))
+            .body(match serde_json::to_vec(&body) {
+                Ok(b) => b,
+                Err(_) => return false,
+            })
+            .expects_response(5);
+
+        let result: Result<serde_json::Value, _> = hyperapp::send(request).await;
+
+        match result {
+            Ok(json_body) => {
+                // Check if response is an error
+                if let Some(err) = json_body.get("Err") {
+                    let err_str = err.as_str().unwrap_or("");
+                    // If unauthorized or invalid key, return false
+                    !err_str.contains("Unauthorized") && !err_str.contains("Invalid API key")
+                } else {
+                    true
+                }
+            }
+            Err(_) => false,
+        }
+    }
+
     fn sync_entry_note_links(&mut self, entry_id: u64, note_ids: Vec<u64>) -> Vec<Note> {
         let desired: HashSet<u64> = note_ids.into_iter().collect();
         let mut touched = Vec::new();
