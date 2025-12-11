@@ -110,7 +110,7 @@ const SUGGESTED_PROMPTS = [
     value: 'Create a new task assigned to me to have lunch with Mr Anderson tomorrow at noon',
   },
   {
-    label: 'Summarize coming tasks',
+    label: 'Summarize next tasks',
     value: 'What tasks do I have coming up this week?',
   },
   {
@@ -1186,7 +1186,7 @@ export default function ChatView({ resetToken }: ChatViewProps) {
       {isPublicMode && trialModal.visible && (
         <TrialModal
           usedCount={trialMessageCount}
-          maxCount={3}
+          maxCount={9}
           isLimitReached={trialModal.isLimitReached}
           retryAfterSeconds={trialModal.retryAfterSeconds}
           onClose={() => setTrialModal({ visible: false, isLimitReached: false, retryAfterSeconds: null })}
