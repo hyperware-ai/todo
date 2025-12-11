@@ -2,12 +2,14 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: 200;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  animation: trialFadeIn 0.2s ease-out;
+  animation: trialFadeIn 0.2s var(--ease-smooth-out, ease-out);
 }
 
 @keyframes trialFadeIn {
@@ -28,17 +30,21 @@
   padding: 1.5rem;
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
   border: 1.5px solid var(--iris-300, #a5b4fc);
-  animation: trialSlideUp 0.25s ease-out;
+  animation: trialSlideUp 0.35s var(--ease-spring, cubic-bezier(0.175, 0.885, 0.32, 1.275));
 }
 
 @keyframes trialSlideUp {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(20px);
+    transform: scale(0.95) translateY(24px);
   }
-  to {
+  60% {
     opacity: 1;
-    transform: translateY(0);
+    transform: scale(1.01) translateY(-4px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
   }
 }
 
@@ -72,10 +78,20 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition:
+    background var(--duration-fast, 150ms) var(--ease-smooth, ease),
+    border-color var(--duration-fast, 150ms) var(--ease-smooth, ease),
+    transform var(--duration-fast, 150ms) var(--ease-spring, cubic-bezier(0.175, 0.885, 0.32, 1.275));
 }
 
 .trial-modal__header .modal-close:hover {
   background: var(--ink-100);
+  transform: scale(1.08);
+}
+
+.trial-modal__header .modal-close:active {
+  transform: scale(0.94);
+  transition-duration: var(--duration-instant, 75ms);
 }
 
 .trial-modal__body {
@@ -102,6 +118,18 @@
   border-radius: 16px;
   padding: 1rem;
   margin-top: 1rem;
+  animation: fadeInUp 0.3s var(--ease-smooth-out, ease-out) 0.1s backwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .trial-cta .cta-header {
@@ -124,7 +152,7 @@
 }
 
 .trial-cta .hubspot-form-container {
-  transition: opacity 0.3s ease;
+  transition: opacity 0.3s var(--ease-smooth, ease);
 }
 
 .trial-cta .hubspot-form-container.loading {
@@ -166,12 +194,15 @@
   font-size: 0.9rem;
   background: var(--shell);
   color: var(--ink-900);
-  transition: border-color 0.15s ease;
+  transition:
+    border-color var(--duration-fast, 150ms) var(--ease-smooth, ease),
+    box-shadow var(--duration-normal, 200ms) var(--ease-smooth, ease);
 }
 
 .trial-cta .hs-form .hs-input:focus {
   outline: none;
   border-color: var(--iris-400, #818cf8);
+  box-shadow: 0 0 0 3px var(--iris-100, rgba(129, 140, 248, 0.2));
 }
 
 .trial-cta .hs-form .hs-input::placeholder {
@@ -183,6 +214,7 @@
 }
 
 .trial-cta .hs-form .hs-button {
+  position: relative;
   width: 100%;
   padding: 0.625rem 1rem;
   background: var(--iris-600, #4f46e5);
@@ -192,11 +224,46 @@
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: background 0.15s ease;
+  overflow: hidden;
+  transition:
+    background var(--duration-fast, 150ms) var(--ease-smooth, ease),
+    transform var(--duration-fast, 150ms) var(--ease-spring, ease),
+    box-shadow var(--duration-normal, 200ms) var(--ease-smooth, ease);
 }
 
 .trial-cta .hs-form .hs-button:hover {
   background: var(--iris-700, #4338ca);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.trial-cta .hs-form .hs-button:active {
+  transform: translateY(0) scale(0.98);
+  transition-duration: var(--duration-instant, 75ms);
+}
+
+/* Shine animation on button */
+.trial-cta .hs-form .hs-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: buttonShine 3s ease-in-out infinite 1s;
+}
+
+@keyframes buttonShine {
+  0%, 100% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
+  }
 }
 
 .trial-cta .hs-form .hs-error-msgs {
@@ -217,12 +284,14 @@
   color: var(--iris-700, #4338ca);
   font-size: 0.9rem;
   text-align: center;
+  animation: fadeInUp 0.3s var(--ease-smooth-out, ease-out);
 }
 
 .trial-share {
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid var(--ink-200);
+  animation: fadeInUp 0.3s var(--ease-smooth-out, ease-out) 0.15s backwards;
 }
 
 .trial-share .share-text {
@@ -240,11 +309,20 @@
   text-decoration: none;
   font-weight: 500;
   font-size: 0.9rem;
-  transition: background 0.15s ease, transform 0.1s ease;
+  transition:
+    background var(--duration-fast, 150ms) var(--ease-smooth, ease),
+    transform var(--duration-fast, 150ms) var(--ease-spring, ease),
+    box-shadow var(--duration-normal, 200ms) var(--ease-smooth, ease);
 }
 
 .trial-share .share-button:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.trial-share .share-button:active {
+  transform: translateY(0) scale(0.98);
+  transition-duration: var(--duration-instant, 75ms);
 }
 
 .trial-share .share-button.twitter {
@@ -253,5 +331,5 @@
 }
 
 .trial-share .share-button.twitter:hover {
-  background: #333;
+  background: #1a1a1a;
 }
