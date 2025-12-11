@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import './TrialModal.css';
 
 const HUBSPOT_FORM_SCRIPT_SRC = "https://js.hsforms.net/forms/embed/developer/46995186.js";
@@ -84,7 +85,7 @@ export default function TrialModal({
     return `${minutes} minutes`;
   };
 
-  return (
+  return createPortal(
     <div className="trial-modal-overlay" onClick={onClose}>
       <div className="trial-modal" onClick={(e) => e.stopPropagation()}>
         <header className="trial-modal__header">
@@ -142,6 +143,7 @@ export default function TrialModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
