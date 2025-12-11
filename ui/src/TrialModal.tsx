@@ -1,4 +1,10 @@
+import { useEffect, useRef, useState } from 'react';
 import './TrialModal.css';
+
+const HUBSPOT_FORM_SCRIPT_SRC = "https://js.hsforms.net/forms/embed/developer/46995186.js";
+const HUBSPOT_FORM_PORTAL_ID = "46995186";
+const HUBSPOT_FORM_REGION = "na1";
+const SPIDER_FORM_ID = "e56bbc27-0fa5-4fd7-8f6f-67ec258c5f8d";
 
 interface TrialModalProps {
   usedCount: number;
@@ -15,6 +21,57 @@ export default function TrialModal({
   retryAfterSeconds,
   onClose,
 }: TrialModalProps) {
+  const formContainerRef = useRef<HTMLDivElement | null>(null);
+  const [isFormLoading, setIsFormLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    const container = formContainerRef.current;
+
+    const checkFormLoaded = () => {
+      if (!isMounted) return;
+      if (container && container.querySelector("form, iframe")) {
+        setIsFormLoading(false);
+      } else {
+        requestAnimationFrame(checkFormLoaded);
+      }
+    };
+
+    // Check if script already exists
+    let script: HTMLScriptElement | null = document.querySelector(
+      `script[src="${HUBSPOT_FORM_SCRIPT_SRC}"]`
+    );
+
+    if (!script) {
+      // First time: add the script, it will auto-scan for hs-form-html elements
+      script = document.createElement("script");
+      script.src = HUBSPOT_FORM_SCRIPT_SRC;
+      script.defer = true;
+      document.body.appendChild(script);
+      script.addEventListener("load", checkFormLoaded);
+    } else {
+      // Script already loaded - need to re-add it to trigger a new scan
+      // Remove and re-add the script to force HubSpot to scan for new form containers
+      script.remove();
+      const newScript = document.createElement("script");
+      newScript.src = HUBSPOT_FORM_SCRIPT_SRC;
+      newScript.defer = true;
+      document.body.appendChild(newScript);
+      newScript.addEventListener("load", checkFormLoaded);
+    }
+
+    const fallbackTimeout = window.setTimeout(() => {
+      if (isMounted) {
+        setIsFormLoading(false);
+      }
+    }, 5000);
+
+    return () => {
+      isMounted = false;
+      window.clearTimeout(fallbackTimeout);
+    };
+  }, []);
+
   const formatRetryTime = (seconds: number | null | undefined): string => {
     if (!seconds || seconds <= 0) return 'soon';
 
@@ -31,13 +88,6 @@ export default function TrialModal({
     <div className="trial-modal-overlay" onClick={onClose}>
       <div className="trial-modal" onClick={(e) => e.stopPropagation()}>
         <header className="trial-modal__header">
-          <div className="trial-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-          </div>
           <h2>Trial mode</h2>
           <button type="button" className="modal-close" onClick={onClose}>
             &times;
@@ -56,15 +106,24 @@ export default function TrialModal({
           )}
 
           <div className="trial-cta">
-            <a
-              href="https://hosted.hyperware.ai/?installApp=spider"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="cta-button"
-            >
-              Sign Up or Log In
-            </a>
-            <p className="cta-text">to get started with Spider, your own personal agent</p>
+            <p className="cta-header">Sign up for Beta Information</p>
+            <p className="cta-text">Drop your email to hear when we open the private beta.</p>
+            <div className="hubspot-form-wrapper">
+              <div
+                ref={formContainerRef}
+                className={`hs-form-html hubspot-form-container${isFormLoading ? ' loading' : ''}`}
+                data-region={HUBSPOT_FORM_REGION}
+                data-form-id={SPIDER_FORM_ID}
+                data-portal-id={HUBSPOT_FORM_PORTAL_ID}
+              />
+              {isFormLoading && (
+                <div className="hubspot-loading">
+                  <svg className="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" strokeDasharray="31.4" strokeDashoffset="10" />
+                  </svg>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="trial-share">
