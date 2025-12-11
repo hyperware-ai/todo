@@ -106,15 +106,15 @@ const SUGGESTED_PROMPTS = [
     value: 'How can you help me manage my todos and notes?',
   },
   {
-    label: 'Make a task',
+    label: 'Make task',
     value: 'Create a new task assigned to me to have lunch with Mr Anderson tomorrow at noon',
   },
   {
-    label: 'Summarize upcoming tasks',
+    label: 'Summarize coming tasks',
     value: 'What tasks do I have coming up this week?',
   },
   {
-    label: 'Make a note',
+    label: 'Make note',
     value: 'Create a new note: grocery list, chicken, carrots, celery, lemon, orzo, onion, garlic, broth, link https://pipingpotcurry.com/lemon-chicken-orzo-pressure-cooker#:~:text=Equipment',
   },
 ];
