@@ -974,9 +974,13 @@ export default function ChatView({ resetToken }: ChatViewProps) {
             {isPublicMode && (
               <div className="public-warning">
                 PUBLIC TRIAL MODE: all inputs are public!
-                <a href="https://hosted.hyperware.ai/?installApp=spider" target="_blank" rel="noopener noreferrer" className="cta-button">
-                  Get the Full, Private Experience
-                </a>
+                <button
+                  type="button"
+                  className="cta-button"
+                  onClick={() => setTrialModal({ visible: true, isLimitReached: false, retryAfterSeconds: null })}
+                >
+                  Sign Up for the Beta
+                </button>
               </div>
             )}
           </>
