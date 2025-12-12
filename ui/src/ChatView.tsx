@@ -968,7 +968,7 @@ export default function ChatView({ resetToken }: ChatViewProps) {
                 ) : (
                   <>
                     <h3>Tap anywhere to dictate</h3>
-                    <p>Tap again to transcribe and send</p>
+                    <p>Tap again to send</p>
                   </>
                 )}
               </div>
